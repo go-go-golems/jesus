@@ -80,13 +80,13 @@ func AddMCPCommand(rootCmd *cobra.Command) error {
 	// Get the JavaScript API documentation
 	// TODO: Re-implement once doc package is available
 	javascriptAPIDoc := "JavaScript API documentation not available"
-	
+
 	/*
-	javascriptAPIDoc, err := doc.GetJavaScriptAPIReference()
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to load JavaScript API documentation")
-		javascriptAPIDoc = "JavaScript API documentation not available"
-	}
+		javascriptAPIDoc, err := doc.GetJavaScriptAPIReference()
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to load JavaScript API documentation")
+			javascriptAPIDoc = "JavaScript API documentation not available"
+		}
 	*/
 
 	// Create the tool description with documentation and correct ports

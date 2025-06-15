@@ -7,7 +7,6 @@ import (
 	"net/http"
 	// "regexp"
 	// "strings"
-
 	// "github.com/go-go-golems/go-go-mcp/cmd/experiments/js-web-server/pkg/doc"
 )
 
@@ -43,23 +42,22 @@ func DocsAPIHandler() http.HandlerFunc {
 func handleExamples(w http.ResponseWriter, r *http.Request) {
 	// TODO: Re-implement once doc package is available
 	http.Error(w, "Documentation examples not available", http.StatusNotImplemented)
-	return
-	
-	/*
-	docsFS, err := doc.GetJSWebServerDocsFS()
-	if err != nil {
-		http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
-		return
-	}
-	
-	examples, err := extractCodeExamples(docsFS)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to extract examples: %v", err), http.StatusInternalServerError)
-		return
-	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(examples)
+	/*
+		docsFS, err := doc.GetJSWebServerDocsFS()
+		if err != nil {
+			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
+			return
+		}
+
+		examples, err := extractCodeExamples(docsFS)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to extract examples: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(examples)
 	*/
 }
 
@@ -67,33 +65,32 @@ func handleExamples(w http.ResponseWriter, r *http.Request) {
 func handleDocsList(w http.ResponseWriter, r *http.Request) {
 	// TODO: Re-implement once doc package is available
 	http.Error(w, "Documentation list not available", http.StatusNotImplemented)
-	return
-	
+
 	/*
-	docsFS, err := doc.GetJSWebServerDocsFS()
-	if err != nil {
-		http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
-		return
-	}
-
-	files, err := fs.ReadDir(docsFS, ".")
-	if err != nil {
-		http.Error(w, "Failed to read docs directory", http.StatusInternalServerError)
-		return
-	}
-
-	var docs []map[string]interface{}
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".md") {
-			docs = append(docs, map[string]interface{}{
-				"name":  file.Name(),
-				"title": strings.TrimSuffix(strings.ReplaceAll(file.Name(), "-", " "), ".md"),
-			})
+		docsFS, err := doc.GetJSWebServerDocsFS()
+		if err != nil {
+			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
+			return
 		}
-	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(docs)
+		files, err := fs.ReadDir(docsFS, ".")
+		if err != nil {
+			http.Error(w, "Failed to read docs directory", http.StatusInternalServerError)
+			return
+		}
+
+		var docs []map[string]interface{}
+		for _, file := range files {
+			if strings.HasSuffix(file.Name(), ".md") {
+				docs = append(docs, map[string]interface{}{
+					"name":  file.Name(),
+					"title": strings.TrimSuffix(strings.ReplaceAll(file.Name(), "-", " "), ".md"),
+				})
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(docs)
 	*/
 }
 
@@ -107,26 +104,25 @@ func handleDocContent(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Re-implement once doc package is available
 	http.Error(w, "Documentation content not available", http.StatusNotImplemented)
-	return
-	
-	/*
-	docsFS, err := doc.GetJSWebServerDocsFS()
-	if err != nil {
-		http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
-		return
-	}
-	
-	content, err := fs.ReadFile(docsFS, filename)
-	if err != nil {
-		http.Error(w, "File not found", http.StatusNotFound)
-		return
-	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"filename": filename,
-		"content":  string(content),
-	})
+	/*
+		docsFS, err := doc.GetJSWebServerDocsFS()
+		if err != nil {
+			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
+			return
+		}
+
+		content, err := fs.ReadFile(docsFS, filename)
+		if err != nil {
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"filename": filename,
+			"content":  string(content),
+		})
 	*/
 }
 
