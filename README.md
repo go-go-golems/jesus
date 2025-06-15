@@ -1,4 +1,4 @@
-# JavaScript Playground Server
+# Jesus - JavaScript Playground Server
 
 A dynamic, JavaScript-powered web server built in Go that provides an Express.js compatible API for creating web applications entirely through JavaScript code - with built-in SQLite database integration and real-time endpoint registration.
 
@@ -6,16 +6,16 @@ A dynamic, JavaScript-powered web server built in Go that provides an Express.js
 
 ```bash
 # Start the server
-go run . serve -p 8080
+go run ./cmd/jesus serve -p 8080
 
 # Execute JavaScript code (Express.js style)
-go run . execute "app.get('/hello', (req, res) => res.send('Hello World!'))"
+go run ./cmd/jesus execute "app.get('/hello', (req, res) => res.send('Hello World!'))"
 
 # Start interactive REPL for experimentation
-go run . repl
+go run ./cmd/jesus repl
 
 # Test the server
-go run . test
+go run ./cmd/jesus test
 ```
 
 Then visit `http://localhost:8080/hello` to see your endpoint in action!
@@ -35,8 +35,8 @@ Then visit `http://localhost:8080/hello` to see your endpoint in action!
 
 ## 📖 Documentation
 
-- **[JavaScript Developer Guide](pkg/doc/docs/javascript-developer-guide.md)** - Complete guide to building applications in the sandboxed environment
-- **[Server Architecture & Internals](pkg/doc/docs/server-architecture.md)** - Deep dive into how the server works internally
+- **JavaScript Developer Guide** - Complete guide to building applications in the sandboxed environment (coming soon)
+- **Server Architecture & Internals** - Deep dive into how the server works internally (coming soon)
 - **[Express.js API Reference](#expressjs-api)** - Familiar Express.js compatible API for web development
 
 ### Quick Reference
@@ -148,39 +148,39 @@ const posts = db.query("SELECT * FROM posts ORDER BY created_at DESC");
 
 ```bash
 # Start server with custom configuration
-go run . serve --port 8080 --db data.sqlite --log-level info
+go run ./cmd/jesus serve --port 8080 --db data.sqlite --log-level info
 
 # Load JavaScript files on startup
-go run . serve --scripts ./my-scripts/
+go run ./cmd/jesus serve --scripts ./my-scripts/
 
 # Production mode
-go run . serve --port 80 --log-level warn --db /data/production.sqlite
+go run ./cmd/jesus serve --port 80 --log-level warn --db /data/production.sqlite
 ```
 
 ### Client Commands
 
 ```bash
 # Execute JavaScript from file
-go run . execute script.js
+go run ./cmd/jesus execute script.js
 
 # Execute JavaScript from command line
-go run . execute "console.log('Hello from CLI')"
+go run ./cmd/jesus execute "console.log('Hello from CLI')"
 
 # Test server endpoints
-go run . test --url http://localhost:8080
+go run ./cmd/jesus test --url http://localhost:8080
 ```
 
 ### Interactive REPL
 
 ```bash
 # Start basic REPL
-go run . repl
+go run ./cmd/jesus repl
 
 # Start in multiline mode
-go run . repl --multiline
+go run ./cmd/jesus repl --multiline
 
 # Show REPL help
-go run . repl --help
+go run ./cmd/jesus repl --help
 ```
 
 The REPL provides an interactive JavaScript environment with:
@@ -207,33 +207,40 @@ Generate demo GIFs: `cd demos && ./generate-all.sh` (requires [VHS](https://gith
 ## 🏗️ Project Structure
 
 ```
-cmd/experiments/js-web-server/
-├── main.go                           # CLI interface and server bootstrap
-├── internal/
-│   ├── engine/
-│   │   ├── engine.go                # Core JavaScript runtime (Goja)
-│   │   ├── dispatcher.go            # Single-threaded job processor
-│   │   ├── bindings.go              # JavaScript API bindings
-│   │   └── handlers.go              # Express.js compatible routing
-│   ├── repl/                        # Interactive REPL implementation
-│   │   ├── model.go                 # REPL UI model with Bubble Tea
-│   │   └── styles.go                # Visual styling with Lipgloss
-│   ├── api/
-│   │   └── execute.go               # /v1/execute endpoint for code execution
-│   ├── web/
-│   │   └── router.go                # Dynamic route handling
-│   └── mcp/
-│       └── server.go                # MCP server integration
-├── demos/                           # VHS demo tapes for REPL
-│   ├── README.md                    # Demo documentation
-│   ├── generate-all.sh              # Script to generate all demos
-│   └── *.tape                       # VHS tape files
-├── pkg/
-│   └── doc/                         # Documentation package
-│       ├── docs/                    # Embedded documentation files
-│       └── doc.go                   # Documentation access functions
-├── test-scripts/                    # Example JavaScript applications
-└── scripts/                         # Runtime JavaScript storage
+cmd/jesus/
+├── main.go                          # CLI interface and server bootstrap
+└── cmd/                            # Command implementations
+    ├── serve.go                    # Server command
+    ├── execute.go                  # Execute command
+    ├── repl.go                     # REPL command
+    ├── test.go                     # Test command
+    ├── run_scripts.go              # Run scripts command
+    └── cobra.go                    # Cobra command utilities
+pkg/                                # Library code
+├── engine/
+│   ├── engine.go                   # Core JavaScript runtime (Goja)
+│   ├── dispatcher.go               # Single-threaded job processor
+│   ├── bindings.go                 # JavaScript API bindings
+│   └── handlers.go                 # Express.js compatible routing
+├── repl/                           # Interactive REPL implementation
+│   ├── model.go                    # REPL UI model with Bubble Tea
+│   └── styles.go                   # Visual styling with Lipgloss
+├── api/
+│   └── execute.go                  # /v1/execute endpoint for code execution
+├── web/
+│   ├── router.go                   # Dynamic route handling
+│   ├── admin/                      # Admin interface
+│   └── templates/                  # Go templates
+├── mcp/
+│   └── server.go                   # MCP server integration
+└── repository/                     # Database layer
+demos/                              # VHS demo tapes for REPL
+├── README.md                       # Demo documentation
+├── generate-all.sh                 # Script to generate all demos
+└── *.tape                          # VHS tape files
+examples/                           # Example configurations
+scripts/                            # Runtime JavaScript storage
+static/                             # Static web assets
 ```
 
 ## 🚦 Getting Started
@@ -241,15 +248,14 @@ cmd/experiments/js-web-server/
 ### 1. Start the Server
 
 ```bash
-cd cmd/experiments/js-web-server
-go run . serve
+go run ./cmd/jesus serve
 ```
 
 ### 2. Create Your First Endpoint
 
 ```bash
 # Create a simple greeting endpoint (Express.js style)
-go run . execute "
+go run ./cmd/jesus execute "
 app.get('/greet', (req, res) => {
     const name = req.query.name || 'World';
     res.json({
@@ -273,7 +279,7 @@ curl "http://localhost:8080/greet?name=Alice"
 ### 4. Create a Database-Driven API
 
 ```bash
-go run . execute "
+go run ./cmd/jesus execute "
 // Create users table
 db.query(\`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
@@ -300,7 +306,7 @@ Test it: `curl http://localhost:8080/api/users`
 ### 5. Build a Complete Web Page
 
 ```bash
-go run . execute "
+go run ./cmd/jesus execute "
 app.get('/users', (req, res) => {
     const users = db.query('SELECT * FROM users');
     
@@ -452,7 +458,7 @@ mkdir my-api
 echo "registerHandler('GET', '/status', () => ({status: 'running'}));" > my-api/status.js
 
 # Start server with scripts
-go run . serve --scripts my-api/
+go run ./cmd/jesus serve --scripts my-api/
 ```
 
 ### Persistent State Management
@@ -509,10 +515,10 @@ Configure logging levels for development and production:
 
 ```bash
 # Development - see everything
-go run . serve --log-level debug
+go run ./cmd/jesus serve --log-level debug
 
 # Production - errors and warnings only
-go run . serve --log-level warn
+go run ./cmd/jesus serve --log-level warn
 ```
 
 ### JavaScript Console
@@ -534,14 +540,14 @@ console.debug("Debug information");
 FROM golang:1.22-alpine AS builder
 WORKDIR /app
 COPY . .
-RUN go build -o js-playground ./cmd/experiments/js-web-server
+RUN go build -o jesus ./cmd/jesus
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
-COPY --from=builder /app/js-playground .
+COPY --from=builder /app/jesus .
 EXPOSE 8080
-CMD ["./js-playground", "serve"]
+CMD ["./jesus", "serve"]
 ```
 
 ### Environment Variables
@@ -565,4 +571,4 @@ This is an experimental project demonstrating the integration of JavaScript runt
 
 ## 📄 License
 
-This project is part of the go-go-mcp experimental suite.
+This project is part of the go-go-golems suite.

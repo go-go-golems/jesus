@@ -20,7 +20,7 @@ func main() {
 
 	// Create root command
 	rootCmd := &cobra.Command{
-		Use:   "js-playground",
+		Use:   "jesus",
 		Short: "JavaScript playground web server with Geppetto AI integration",
 		Long:  "A JavaScript playground web server with SQLite integration and Geppetto AI capabilities",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
