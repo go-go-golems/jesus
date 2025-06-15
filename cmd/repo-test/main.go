@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/go-go-golems/go-go-mcp/cmd/experiments/js-web-server/internal/repository"
+	"github.com/go-go-golems/jesus/pkg/repository"
 )
 
 func main() {
