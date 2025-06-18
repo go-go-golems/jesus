@@ -2,9 +2,11 @@ package engine
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
@@ -319,19 +321,91 @@ func (e *Engine) executeCodeWithResult(code string) (*EvalResult, error) {
 	// Log runtime state before execution
 	e.logJavaScriptRuntimeState("before-execution-with-result")
 
-	value, err := e.rt.RunString(code)
-	if err != nil {
-		log.Error().Err(err).Str("code", code).Msg("JavaScript execution error with result capture")
+	// Execute the script on the event loop to support async operations
+	done := make(chan error, 1)
+	doneCallbackUsed := false
+
+	e.loop.RunOnLoop(func(vm *goja.Runtime) {
+		// Ensure we're using the same runtime instance that has the bindings
+		if vm != e.rt {
+			log.Debug().Msg("Runtime mismatch detected, using engine runtime")
+			vm = e.rt
+		}
+
+		// Register done callback for async script completion
+		err := vm.Set("done", func(args ...interface{}) {
+			doneCallbackUsed = true
+			if len(args) > 0 {
+				// Check if first argument is an error-like object
+				if errArg := args[0]; errArg != nil {
+					if err, ok := errArg.(error); ok {
+						result.Error = err
+						done <- err
+					} else if str, ok := errArg.(string); ok {
+						errMsg := fmt.Errorf("script error: %s", str)
+						result.Error = errMsg
+						done <- errMsg
+					} else {
+						errMsg := fmt.Errorf("script error: %v", errArg)
+						result.Error = errMsg
+						done <- errMsg
+					}
+				} else {
+					done <- nil
+				}
+			} else {
+				done <- nil
+			}
+		})
+		if err != nil {
+			done <- fmt.Errorf("failed to register done callback: %w", err)
+			return
+		}
+
+		// Execute the script
+		value, err := vm.RunString(code)
+		if err != nil {
+			log.Error().Err(err).Str("code", code).Msg("JavaScript execution error with result capture")
+			result.Error = err
+			done <- err
+			return
+		}
+
+		// Export the result to a Go-friendly format
+		if value != nil && !goja.IsUndefined(value) {
+			result.Value = value.Export()
+			log.Debug().Interface("resultValue", result.Value).Msg("JavaScript execution result captured")
+		} else {
+			log.Debug().Msg("JavaScript execution returned undefined or null")
+		}
+
+		// For scripts that don't use done(), we need a fallback timeout
+		// But for scripts that do use done(), they will call it themselves when ready
+		go func() {
+			time.Sleep(30 * time.Second) // Much longer timeout as fallback
+			if !doneCallbackUsed {
+				select {
+				case done <- nil:
+					log.Debug().Msg("Script completed via timeout fallback")
+				default:
+				}
+			}
+		}()
+	})
+
+	// Wait for completion with a reasonable timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Error().Err(err).Str("code", code).Msg("JavaScript execution failed")
+			result.Error = err
+			return result, err
+		}
+	case <-time.After(30 * time.Second):
+		err := fmt.Errorf("script execution timeout")
+		log.Error().Str("code", code).Msg("JavaScript execution timeout")
 		result.Error = err
 		return result, err
-	}
-
-	// Export the result to a Go-friendly format
-	if value != nil && !goja.IsUndefined(value) {
-		result.Value = value.Export()
-		log.Debug().Interface("resultValue", result.Value).Msg("JavaScript execution result captured")
-	} else {
-		log.Debug().Msg("JavaScript execution returned undefined or null")
 	}
 
 	log.Debug().Int("consoleLogCount", len(result.ConsoleLog)).Msg("Console output captured")
