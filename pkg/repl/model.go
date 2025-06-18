@@ -443,6 +443,7 @@ func (m Model) handleSlashCommand(input string) Model {
 /quit      - Exit the REPL
 /multiline - Toggle multiline mode
 /edit      - Open current content in external editor (same as Ctrl+E)
+/load <file> - Load and execute a JavaScript file
 
 Keyboard shortcuts:
 Ctrl+J     - Add line in multiline mode
@@ -517,6 +518,108 @@ Up/Down    - Navigate command history`
 				isErr:  true,
 			})
 		}
+
+	case "load":
+		if len(parts) < 2 {
+			m.history = append(m.history, historyEntry{
+				input:  input,
+				output: "Usage: /load <filename>",
+				isErr:  true,
+			})
+			return m
+		}
+
+		filename := parts[1]
+		content, err := os.ReadFile(filename)
+		if err != nil {
+			m.history = append(m.history, historyEntry{
+				input:  input,
+				output: fmt.Sprintf("Error reading file: %v", err),
+				isErr:  true,
+			})
+			return m
+		}
+
+		// Execute the loaded JavaScript code
+		result, err := m.jsRuntime.RunString(string(content))
+		if err != nil {
+			m.history = append(m.history, historyEntry{
+				input:  input,
+				output: fmt.Sprintf("Error executing file: %v", err),
+				isErr:  true,
+			})
+			return m
+		}
+
+		// Check if result is a promise and await it
+		var finalResult goja.Value = result
+		if result != nil && !goja.IsUndefined(result) {
+			// Check if the result has a 'then' method (promise-like)
+			if obj := result.ToObject(m.jsRuntime); obj != nil {
+				if thenMethod := obj.Get("then"); thenMethod != nil && !goja.IsUndefined(thenMethod) {
+					// It's a promise, try to await it
+					awaitScript := `
+						(function(promise) {
+							let resolved = false;
+							let result = undefined;
+							let error = undefined;
+							
+							promise.then(
+								function(value) { resolved = true; result = value; },
+								function(err) { resolved = true; error = err; }
+							);
+							
+							// Simple busy wait for the promise to resolve
+							// Note: This is a basic implementation - real async would be better
+							let timeout = 30000; // 30 second timeout
+							let start = Date.now();
+							while (!resolved && (Date.now() - start) < timeout) {
+								// Busy wait
+							}
+							
+							if (!resolved) {
+								throw new Error("Promise timeout after 30 seconds");
+							}
+							
+							if (error) {
+								throw error;
+							}
+							
+							return result;
+						})
+					`
+					awaitFunc, err := m.jsRuntime.RunString(awaitScript)
+					if err == nil {
+						if callable, ok := goja.AssertFunction(awaitFunc); ok {
+							awaitedResult, awaitErr := callable(goja.Undefined(), result)
+							if awaitErr != nil {
+								m.history = append(m.history, historyEntry{
+									input:  input,
+									output: fmt.Sprintf("Error awaiting promise: %v", awaitErr),
+									isErr:  true,
+								})
+								return m
+							}
+							finalResult = awaitedResult
+						}
+					}
+				}
+			}
+		}
+
+		// Show the result
+		var output string
+		if finalResult != nil && !goja.IsUndefined(finalResult) {
+			output = fmt.Sprintf("Loaded and executed %s\nResult: %s", filename, finalResult.String())
+		} else {
+			output = fmt.Sprintf("Loaded and executed %s", filename)
+		}
+
+		m.history = append(m.history, historyEntry{
+			input:  input,
+			output: output,
+			isErr:  false,
+		})
 
 	default:
 		m.history = append(m.history, historyEntry{
