@@ -113,86 +113,60 @@ func (m) Loader(vm *goja.Runtime, moduleObj *goja.Object) {
 func init() { modules.Register(&m{}) }
 ```
 
-## Migration Plan
+## goja_nodejs: The Missing Piece
 
-### Phase 1: Core Utility Modules (Low Complexity)
+**CRITICAL DISCOVERY**: There's already a comprehensive Node.js compatibility library at `goja_nodejs/` that provides many of the modules we were planning to extract from Jesus!
 
-#### 1.1 Console Module
-**Target**: `go-go-goja/modules/console/console.go`
+### Available goja_nodejs Modules
+1. **console** - Multi-level logging with configurable printers
+2. **buffer** - Complete Node.js Buffer implementation with encoding support
+3. **url** - URL parsing and URLSearchParams
+4. **util** - String formatting utilities (used by console)
+5. **process** - Environment variables and process info
+6. **eventloop** - Async operations with setTimeout, setInterval, Promises
+7. **require** - Module loading system (core infrastructure)
+8. **errors** - Node.js compatible error handling
 
-**Features to Extract**:
-- Multi-level logging (`log`, `error`, `info`, `warn`, `debug`)
-- Configurable output destinations
-- Optional structured logging integration
+### Key Insights
 
-**Dependencies**: 
-- Core: None (use `fmt` and `os`)
-- Optional: `github.com/rs/zerolog` for structured logging
+#### What This Changes
+- **Console Module**: ✅ Already exists in goja_nodejs with better implementation than Jesus
+- **JSON Module**: ❌ Not in goja_nodejs, but Jesus's implementation is basic
+- **EventLoop/Async**: ✅ Already exists with full Promise support and timers
+- **Buffer Operations**: ✅ Already exists with comprehensive encoding support
+- **URL Handling**: ✅ Already exists with full URL parsing
+- **Utilities**: ✅ Already exists with string formatting
 
-**Interface**:
-```javascript
-const console = require("console");
-console.log("message");
-console.error("error message");
-// etc.
-```
+#### What We Still Need to Extract
+- **Database Module**: Not available in goja_nodejs
+- **HTTP Client Module**: Not available in goja_nodejs  
+- **Express Server Module**: Not available in goja_nodejs
+- **Global State Module**: Not available in goja_nodejs (Jesus-specific)
 
-**Implementation Considerations**:
-- Remove Jesus-specific request logging integration
-- Make logging destination configurable
-- Support both simple and structured logging modes
+## Revised Migration Plan
 
-#### 1.2 JSON Module
-**Target**: `go-go-goja/modules/json/json.go`
+### Phase 0: Leverage Existing goja_nodejs Modules (IMMEDIATE)
 
-**Features to Extract**:
-- `JSON.stringify()` and `JSON.parse()`
-- Error handling with goja exceptions
-- Pretty printing support
+#### 0.1 Replace Jesus Console with goja_nodejs Console
+**Action**: Update go-go-goja to use `github.com/dop251/goja_nodejs/console`
+**Benefits**: 
+- Better implementation with configurable printers
+- Standard Node.js compatibility
+- Removes need to extract from Jesus
 
-**Dependencies**: `encoding/json`
+#### 0.2 Add goja_nodejs Integration to go-go-goja
+**Action**: Import and enable key goja_nodejs modules in `engine/runtime.go`
+**Modules to Enable**:
+- `console` - Logging
+- `buffer` - Binary data handling  
+- `url` - URL parsing
+- `util` - Utilities
+- `process` - Environment access
+- `eventloop` - Async operations
 
-**Interface**:
-```javascript
-const JSON = require("json");
-const str = JSON.stringify({key: "value"});
-const obj = JSON.parse(str);
-```
+### Phase 1: Extract Jesus-Specific Modules (Medium-High Complexity)
 
-### Phase 2: HTTP Client Module (Medium Complexity)
-
-#### 2.1 HTTP Client Module
-**Target**: `go-go-goja/modules/http-client/http-client.go`
-
-**Features to Extract**:
-- Modern `fetch()` API
-- HTTP method shortcuts (`GET`, `POST`, etc.)
-- Request/response transformation
-- Timeout and header support
-- JSON body handling
-
-**Dependencies**: `net/http`, `encoding/json`
-
-**Interface**:
-```javascript
-const { fetch, HTTP } = require("http-client");
-
-// Modern fetch API
-const response = await fetch("https://api.example.com/data");
-const data = await response.json();
-
-// Method shortcuts
-const result = HTTP.get("https://api.example.com/users");
-```
-
-**Implementation Considerations**:
-- Remove Jesus-specific request logging
-- Make HTTP client configurable (timeouts, etc.)
-- Support both synchronous and asynchronous patterns
-
-### Phase 3: Database Module (Medium-High Complexity)
-
-#### 3.1 Database Module
+#### 1.1 Database Module
 **Target**: `go-go-goja/modules/database/database.go`
 
 **Features to Extract**:
@@ -225,9 +199,40 @@ const result = db.exec("INSERT INTO users (name, email) VALUES (?, ?)", ["John",
 - Add connection pooling and management
 - Support both synchronous and asynchronous operations
 
-### Phase 4: Express-like Server Module (High Complexity)
+#### 1.2 HTTP Client Module
+**Target**: `go-go-goja/modules/http-client/http-client.go`
 
-#### 4.1 Express Server Module
+**Features to Extract**:
+- Modern `fetch()` API
+- HTTP method shortcuts (`GET`, `POST`, etc.)
+- Request/response transformation
+- Timeout and header support
+- JSON body handling
+- Async support using goja_nodejs/eventloop
+
+**Dependencies**: `net/http`, `encoding/json`, `github.com/dop251/goja_nodejs/eventloop`
+
+**Interface**:
+```javascript
+const { fetch, HTTP } = require("http-client");
+
+// Modern fetch API with Promises
+const response = await fetch("https://api.example.com/data");
+const data = await response.json();
+
+// Method shortcuts
+const result = HTTP.get("https://api.example.com/users");
+```
+
+**Implementation Considerations**:
+- Remove Jesus-specific request logging
+- Make HTTP client configurable (timeouts, etc.)
+- Use goja_nodejs eventloop for Promise-based async operations
+- Support both synchronous and asynchronous patterns
+
+### Phase 2: Express-like Server Module (High Complexity)
+
+#### 2.1 Express Server Module
 **Target**: `go-go-goja/modules/express/express.go`
 
 **Features to Extract**:
@@ -370,15 +375,14 @@ go-go-goja/
 ### Risk 4: Dependency Conflicts
 **Mitigation**: Careful dependency management, optional dependencies where possible
 
-## Timeline Estimate
+## Revised Timeline Estimate
 
-- **Phase 1** (Console, JSON): 1-2 weeks
-- **Phase 2** (HTTP Client): 2-3 weeks  
-- **Phase 3** (Database): 3-4 weeks
-- **Phase 4** (Express Server): 4-5 weeks
+- **Phase 0** (goja_nodejs Integration): 1-2 weeks
+- **Phase 1** (Database + HTTP Client): 4-6 weeks  
+- **Phase 2** (Express Server): 4-5 weeks
 - **Documentation and Testing**: 2-3 weeks
 
-**Total Estimated Time**: 12-17 weeks
+**Total Estimated Time**: 11-16 weeks (reduced by leveraging existing goja_nodejs modules)
 
 ## Success Criteria
 
@@ -391,14 +395,24 @@ go-go-goja/
 
 ## Next Steps
 
-1. **Validate Approach**: Review this plan with stakeholders
-2. **Start with Phase 1**: Begin with console and JSON modules
-3. **Create Proof of Concept**: Implement one module end-to-end
-4. **Iterate and Refine**: Adjust approach based on initial results
-5. **Scale Implementation**: Apply lessons learned to remaining modules
+1. **Validate Approach**: Review this revised plan with stakeholders
+2. **Start with Phase 0**: Integrate goja_nodejs modules into go-go-goja
+3. **Update Jesus**: Replace Jesus console with goja_nodejs console
+4. **Create Proof of Concept**: Implement database module end-to-end
+5. **Iterate and Refine**: Adjust approach based on initial results
+6. **Scale Implementation**: Apply lessons learned to remaining modules
 
 ## Conclusion
 
-Moving JavaScript libraries from Jesus to go-go-goja represents a significant architectural improvement that will benefit both projects and the broader goja ecosystem. The modular approach outlined here minimizes risk while maximizing reusability and maintainability.
+The discovery of the comprehensive goja_nodejs library significantly changes our migration strategy. Instead of extracting and reimplementing basic JavaScript APIs from Jesus, we can:
 
-The extraction will transform go-go-goja from a simple module playground into a comprehensive JavaScript runtime environment, while making Jesus more focused and maintainable. 
+1. **Leverage existing, battle-tested Node.js compatibility modules** from goja_nodejs
+2. **Focus our extraction efforts on Jesus-specific, high-value modules** (database, HTTP client, Express server)
+3. **Reduce development time by 1-6 weeks** while getting better implementations
+
+This revised approach will transform go-go-goja into a comprehensive JavaScript runtime environment by combining:
+- **Existing goja_nodejs modules** for standard Node.js APIs
+- **Extracted Jesus modules** for web development and database access
+- **Native go-go-goja modules** for system integration
+
+The result will be a powerful, reusable JavaScript runtime that benefits both the go-go-goja ecosystem and makes Jesus more focused and maintainable. 
