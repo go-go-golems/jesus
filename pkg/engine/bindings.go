@@ -425,11 +425,11 @@ func (e *Engine) setupGeppettoAPIs() {
 	}
 
 	// Register ChatStepFactory
-	if err := js.RegisterFactory(e.rt, e.loop, e.stepSettings); err != nil {
-		log.Error().Err(err).Msg("Failed to register ChatStepFactory")
-	} else {
-		log.Debug().Msg("ChatStepFactory registered")
-	}
+	// if err := js.RegisterFactory(e.rt, e.loop, e.stepSettings); err != nil {
+	// 	log.Error().Err(err).Msg("Failed to register ChatStepFactory")
+	// } else {
+	// 	log.Debug().Msg("ChatStepFactory registered")
+	// }
 
 	// TODO: Register Embeddings API when available
 	// This requires an embeddings provider which we don't have configured yet
@@ -457,10 +457,10 @@ func (e *Engine) setupGeppettoBindings() error {
 	log.Debug().Msg("Conversation API registered")
 
 	// Register ChatStepFactory
-	if err := js.RegisterFactory(e.rt, e.loop, e.stepSettings); err != nil {
-		log.Error().Err(err).Msg("Failed to register ChatStepFactory")
-		return err
-	}
+	// if err := js.RegisterFactory(e.rt, e.loop, e.stepSettings); err != nil {
+	// 	log.Error().Err(err).Msg("Failed to register ChatStepFactory")
+	// 	return err
+	// }
 	log.Debug().Msg("ChatStepFactory registered")
 
 	log.Debug().Msg("Geppetto JavaScript APIs setup complete")
