@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dop251/goja"
+	ggjengine "github.com/go-go-golems/go-go-goja/engine"
 )
 
 // Model represents the UI state for the REPL
@@ -41,26 +42,23 @@ func NewModel(startMultiline bool) Model {
 	ti.Width = 80
 	ti.Prompt = "js> "
 
-	// Create a simple Goja runtime for the REPL
-	rt := goja.New()
+	// Create a Goja runtime with Node-style require() and native modules enabled
+	// using the go-go-goja engine helper. This ensures that users can load
+	// modules (e.g. require("database")) from within the REPL.
+	vm, _ := ggjengine.New()
+	rt := vm
 
-	// Set up basic console.log
-	console := rt.NewObject()
-	if err := console.Set("log", func(call goja.FunctionCall) goja.Value {
+	// Override console.log to write directly to stdout without timestamps to keep REPL output clean.
+	consoleObj := rt.NewObject()
+	_ = consoleObj.Set("log", func(call goja.FunctionCall) goja.Value {
 		var args []interface{}
 		for _, arg := range call.Arguments {
 			args = append(args, arg.Export())
 		}
 		fmt.Println(args...)
 		return goja.Undefined()
-	}); err != nil {
-		// Log error but continue - this is during initialization
-		fmt.Printf("Warning: failed to set console.log: %v\n", err)
-	}
-	if err := rt.Set("console", console); err != nil {
-		// Log error but continue - this is during initialization
-		fmt.Printf("Warning: failed to set console object: %v\n", err)
-	}
+	})
+	_ = rt.Set("console", consoleObj)
 
 	return Model{
 		styles:              DefaultStyles(),

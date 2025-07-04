@@ -1,14 +1,16 @@
 package engine
 
 import (
-	"database/sql"
 	"net/http"
 	"os"
 	"sync"
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
+	"github.com/dop251/goja_nodejs/require"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
+	gogogojamodules "github.com/go-go-golems/go-go-goja/modules"
+	databasemod "github.com/go-go-golems/go-go-goja/modules/database"
 	"github.com/go-go-golems/jesus/pkg/repository"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog/log"
@@ -16,17 +18,17 @@ import (
 
 // Engine wraps the JavaScript runtime and data repositories
 type Engine struct {
-	rt           *goja.Runtime
-	loop         *eventloop.EventLoop         // Event loop for async operations
-	db           *sql.DB                      // Legacy database connection for JavaScript bindings
-	repos        repository.RepositoryManager // Repository manager for data access
-	jobs         chan EvalJob
-	handlers     map[string]map[string]*HandlerInfo // [path][method] -> handler info
-	files        map[string]goja.Callable           // [path] -> file handler
-	mu           sync.RWMutex
-	reqLogger    *RequestLogger         // Request logger for admin interface
-	currentReqID string                 // Track current request ID for logging
-	stepSettings *settings.StepSettings // Settings for AI steps
+	rt             *goja.Runtime
+	loop           *eventloop.EventLoop         // Event loop for async operations
+	repos          repository.RepositoryManager // Repository manager for data access
+	jobs           chan EvalJob
+	handlers       map[string]map[string]*HandlerInfo // [path][method] -> handler info
+	files          map[string]goja.Callable           // [path] -> file handler
+	mu             sync.RWMutex
+	reqLogger      *RequestLogger         // Request logger for admin interface
+	currentReqID   string                 // Track current request ID for logging
+	stepSettings   *settings.StepSettings // Settings for AI steps
+	moduleRegistry *gogogojamodules.Registry
 }
 
 // HandlerInfo contains handler function and metadata
@@ -66,15 +68,21 @@ func NewEngine(appDBPath, systemDBPath string) *Engine {
 	rt := goja.New()
 	log.Debug().Msg("Goja runtime created")
 
+	moduleRegistry := gogogojamodules.DefaultRegistry
+	gojaRegistry := require.NewRegistry()
+	moduleRegistry.Enable(gojaRegistry)
+	gojaRegistry.Enable(rt)
+
+	dbModule, ok := moduleRegistry.GetModule("database").(*databasemod.DBModule)
+	if !ok || dbModule == nil {
+		log.Fatal().Msg("Database module not found or is not of type *databasemod.DBModule")
+	}
+	if err := dbModule.Configure("sqlite3", appDBPath); err != nil {
+		log.Fatal().Err(err).Msg("Failed to configure database module")
+	}
+
 	// Set up field name mapper to convert Go method names to JavaScript-style names
 	rt.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
-
-	// Open SQLite connection for JavaScript bindings (application database)
-	appDB, err := sql.Open("sqlite3", appDBPath)
-	if err != nil {
-		log.Fatal().Err(err).Str("database", appDBPath).Msg("Failed to open application database")
-	}
-	log.Debug().Str("database", appDBPath).Msg("Application database connection established")
 
 	// Create repository manager for system operations (system database)
 	repos, err := repository.NewSQLiteRepositoryManager(systemDBPath)
@@ -91,15 +99,15 @@ func NewEngine(appDBPath, systemDBPath string) *Engine {
 	log.Debug().Msg("AI step settings initialized")
 
 	e := &Engine{
-		rt:           rt,
-		loop:         loop,
-		db:           appDB,
-		repos:        repos,
-		jobs:         make(chan EvalJob, 1024),
-		handlers:     make(map[string]map[string]*HandlerInfo),
-		files:        make(map[string]goja.Callable),
-		reqLogger:    NewRequestLogger(100), // Keep last 100 requests
-		stepSettings: stepSettings,
+		rt:             rt,
+		loop:           loop,
+		repos:          repos,
+		jobs:           make(chan EvalJob, 1024),
+		handlers:       make(map[string]map[string]*HandlerInfo),
+		files:          make(map[string]goja.Callable),
+		reqLogger:      NewRequestLogger(100), // Keep last 100 requests
+		stepSettings:   stepSettings,
+		moduleRegistry: moduleRegistry,
 	}
 	log.Debug().Msg("Engine struct initialized")
 
@@ -111,6 +119,10 @@ func NewEngine(appDBPath, systemDBPath string) *Engine {
 	log.Debug().Msg("Setting up JavaScript bindings")
 	e.setupBindings()
 	log.Debug().Msg("JavaScript bindings setup complete")
+
+	if _, err := rt.RunString(`const db = require('database');`); err != nil {
+		log.Fatal().Err(err).Msg("Failed to bind db to global scope")
+	}
 
 	// Log runtime state after bindings setup
 	e.logJavaScriptRuntimeState("after-bindings-setup")
@@ -282,6 +294,11 @@ func (e *Engine) GetRequestLogger() *RequestLogger {
 // GetRepositoryManager returns the repository manager
 func (e *Engine) GetRepositoryManager() repository.RepositoryManager {
 	return e.repos
+}
+
+// GetModuleRegistry returns the go-go-goja module registry.
+func (e *Engine) GetModuleRegistry() *gogogojamodules.Registry {
+	return e.moduleRegistry
 }
 
 // executeCode executes JavaScript code directly in the global scope
@@ -463,17 +480,15 @@ func (e *Engine) Close() error {
 		log.Debug().Msg("Event loop stopped")
 	}
 
-	// Close database connections
-	if e.db != nil {
-		if err := e.db.Close(); err != nil {
-			log.Error().Err(err).Msg("Failed to close application database")
-			return err
-		}
-		log.Debug().Msg("Application database closed")
-	}
-
 	// Close repository manager
 	if e.repos != nil {
+		dbModule, ok := gogogojamodules.GetModule("database").(*databasemod.DBModule)
+		if ok && dbModule != nil {
+			if err := dbModule.Close(); err != nil {
+				log.Error().Err(err).Msg("Failed to close database module")
+			}
+		}
+
 		if err := e.repos.Close(); err != nil {
 			log.Error().Err(err).Msg("Failed to close repository manager")
 			return err

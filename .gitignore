@@ -4,3 +4,4 @@ scripts/
 *.db
 js-web-server
 .git-commit-message.yaml
+dist/

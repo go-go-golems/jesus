@@ -45,13 +45,18 @@ tag-patch:
 	git tag $(shell svu patch)
 
 release:
-	git push --tags
+	git push origin --tags
 	GOPROXY=proxy.golang.org go list -m github.com/go-go-golems/jesus@$(shell svu current)
 
 bump-glazed:
 	go get github.com/go-go-golems/glazed@latest
 	go get github.com/go-go-golems/clay@latest
-	go mod tidy
+	go get github.com/go-go-golems/go-go-goja@latest
+	go get github.com/go-go-golems/geppetto@latest
+	go get github.com/go-go-golems/go-go-mcp@latest
+	go get github.com/go-go-golems/pinocchio@latest
+	go get github.com/go-go-golems/bobatea@latest
+	go get github.com/go-go-golems/go-emrichen@latest
 
 jesus_BINARY=$(shell which jesus)
 install:

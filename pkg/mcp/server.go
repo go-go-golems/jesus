@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"github.com/go-go-golems/jesus/pkg/api"
+	"github.com/go-go-golems/jesus/pkg/doc"
 	"github.com/go-go-golems/jesus/pkg/engine"
 	"github.com/go-go-golems/jesus/pkg/web"
+
 	// "github.com/go-go-golems/go-go-mcp/cmd/experiments/js-web-server/pkg/doc"
 	"github.com/go-go-golems/go-go-mcp/pkg/embeddable"
 	"github.com/go-go-golems/go-go-mcp/pkg/protocol"
@@ -78,16 +80,11 @@ func AddMCPCommand(rootCmd *cobra.Command) error {
 	GlobalWebServerMCP = server
 
 	// Get the JavaScript API documentation
-	// TODO: Re-implement once doc package is available
-	javascriptAPIDoc := "JavaScript API documentation not available"
-
-	/*
-		javascriptAPIDoc, err := doc.GetJavaScriptAPIReference()
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed to load JavaScript API documentation")
-			javascriptAPIDoc = "JavaScript API documentation not available"
-		}
-	*/
+	javascriptAPIDoc, err := doc.GetJavaScriptAPIReference()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to load JavaScript API documentation")
+		javascriptAPIDoc = "JavaScript API documentation not available"
+	}
 
 	// Create the tool description with documentation and correct ports
 	toolDescription := fmt.Sprintf(`Execute JavaScript code in the web server environment.

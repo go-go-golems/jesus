@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/go-go-golems/geppetto/pkg/js"
 	"github.com/rs/zerolog/log"
@@ -13,14 +12,6 @@ import (
 
 // setupBindings configures JavaScript bindings for the runtime
 func (e *Engine) setupBindings() {
-	// SQLite database binding
-	if err := e.rt.Set("db", map[string]interface{}{
-		"query": e.jsQuery,
-		"exec":  e.jsExec,
-	}); err != nil {
-		log.Error().Err(err).Msg("Failed to set db binding")
-	}
-
 	// Handler registration
 	if err := e.rt.Set("registerHandler", e.registerHandler); err != nil {
 		log.Error().Err(err).Msg("Failed to set registerHandler binding")
@@ -67,166 +58,6 @@ func (e *Engine) setupBindings() {
 	e.setupGeppettoAPIs()
 
 	log.Debug().Msg("JavaScript bindings configured")
-}
-
-// jsQuery executes SQL queries and returns results as JavaScript objects
-func (e *Engine) jsQuery(query string, args ...interface{}) []map[string]interface{} {
-	startTime := time.Now()
-	log.Debug().Str("query", query).Interface("args", args).Msg("Executing SQL query")
-
-	// Convert JavaScript arrays to individual arguments
-	var flatArgs []interface{}
-	for _, arg := range args {
-		if slice, ok := arg.([]interface{}); ok {
-			// If argument is a slice, spread its elements
-			flatArgs = append(flatArgs, slice...)
-		} else {
-			// Otherwise, add the argument as-is
-			flatArgs = append(flatArgs, arg)
-		}
-	}
-
-	log.Debug().Str("query", query).Interface("flatArgs", flatArgs).Msg("Flattened SQL arguments")
-
-	rows, err := e.db.Query(query, flatArgs...)
-	if err != nil {
-		log.Error().Err(err).Str("query", query).Interface("args", flatArgs).Msg("SQL query error")
-
-		// Log database operation if we have a current request
-		if e.currentReqID != "" {
-			dbOp := DatabaseOperation{
-				Timestamp:  startTime,
-				Type:       "query",
-				SQL:        query,
-				Parameters: flatArgs,
-				Error:      err.Error(),
-				Duration:   time.Since(startTime),
-			}
-			e.reqLogger.AddDatabaseOperation(e.currentReqID, dbOp)
-		}
-
-		return nil
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Error().Err(err).Msg("Failed to close database rows")
-		}
-	}()
-
-	cols, err := rows.Columns()
-	if err != nil {
-		log.Error().Err(err).Msg("SQL columns error")
-		return nil
-	}
-
-	var result []map[string]interface{}
-	for rows.Next() {
-		vals := make([]interface{}, len(cols))
-		scan := make([]interface{}, len(cols))
-		for i := range vals {
-			scan[i] = &vals[i]
-		}
-
-		if err := rows.Scan(scan...); err != nil {
-			log.Error().Err(err).Msg("SQL scan error")
-			continue
-		}
-
-		rec := make(map[string]interface{})
-		for i, col := range cols {
-			rec[col] = vals[i]
-		}
-		result = append(result, rec)
-	}
-
-	duration := time.Since(startTime)
-	log.Debug().Int("rows", len(result)).Dur("duration", duration).Msg("SQL query completed")
-
-	// Log database operation if we have a current request
-	if e.currentReqID != "" {
-		dbOp := DatabaseOperation{
-			Timestamp:  startTime,
-			Type:       "query",
-			SQL:        query,
-			Parameters: flatArgs,
-			Result:     fmt.Sprintf("%d rows returned", len(result)),
-			Duration:   duration,
-		}
-		e.reqLogger.AddDatabaseOperation(e.currentReqID, dbOp)
-	}
-
-	return result
-}
-
-// jsExec executes SQL statements without returning rows (INSERT, UPDATE, DELETE, CREATE, etc.)
-func (e *Engine) jsExec(query string, args ...interface{}) map[string]interface{} {
-	startTime := time.Now()
-	log.Debug().Str("query", query).Interface("args", args).Msg("Executing SQL exec")
-
-	// Convert JavaScript arrays to individual arguments
-	var flatArgs []interface{}
-	for _, arg := range args {
-		if slice, ok := arg.([]interface{}); ok {
-			// If argument is a slice, spread its elements
-			flatArgs = append(flatArgs, slice...)
-		} else {
-			// Otherwise, add the argument as-is
-			flatArgs = append(flatArgs, arg)
-		}
-	}
-
-	log.Debug().Str("query", query).Interface("flatArgs", flatArgs).Msg("Flattened SQL exec arguments")
-
-	result, err := e.db.Exec(query, flatArgs...)
-	if err != nil {
-		log.Error().Err(err).Str("query", query).Interface("args", flatArgs).Msg("SQL exec error")
-
-		// Log database operation if we have a current request
-		if e.currentReqID != "" {
-			dbOp := DatabaseOperation{
-				Timestamp:  startTime,
-				Type:       "exec",
-				SQL:        query,
-				Parameters: flatArgs,
-				Error:      err.Error(),
-				Duration:   time.Since(startTime),
-			}
-			e.reqLogger.AddDatabaseOperation(e.currentReqID, dbOp)
-		}
-
-		return map[string]interface{}{
-			"error":   err.Error(),
-			"success": false,
-		}
-	}
-
-	// Get affected rows and last insert ID if available
-	rowsAffected, _ := result.RowsAffected()
-	lastInsertId, _ := result.LastInsertId()
-
-	duration := time.Since(startTime)
-	log.Debug().Int64("rowsAffected", rowsAffected).Int64("lastInsertId", lastInsertId).Dur("duration", duration).Msg("SQL exec completed")
-
-	// Log database operation if we have a current request
-	if e.currentReqID != "" {
-		dbOp := DatabaseOperation{
-			Timestamp:    startTime,
-			Type:         "exec",
-			SQL:          query,
-			Parameters:   flatArgs,
-			Result:       fmt.Sprintf("success: %d rows affected", rowsAffected),
-			Duration:     duration,
-			RowsAffected: rowsAffected,
-			LastInsertId: lastInsertId,
-		}
-		e.reqLogger.AddDatabaseOperation(e.currentReqID, dbOp)
-	}
-
-	return map[string]interface{}{
-		"success":      true,
-		"rowsAffected": rowsAffected,
-		"lastInsertId": lastInsertId,
-	}
 }
 
 // consoleLog provides console.log functionality
@@ -425,11 +256,11 @@ func (e *Engine) setupGeppettoAPIs() {
 	}
 
 	// Register ChatStepFactory
-	if err := js.RegisterFactory(e.rt, e.loop, e.stepSettings); err != nil {
-		log.Error().Err(err).Msg("Failed to register ChatStepFactory")
-	} else {
-		log.Debug().Msg("ChatStepFactory registered")
-	}
+	// if err := js.RegisterFactory(e.rt, e.loop, e.stepSettings); err != nil {
+	// 	log.Error().Err(err).Msg("Failed to register ChatStepFactory")
+	// } else {
+	// 	log.Debug().Msg("ChatStepFactory registered")
+	// }
 
 	// TODO: Register Embeddings API when available
 	// This requires an embeddings provider which we don't have configured yet
@@ -457,10 +288,10 @@ func (e *Engine) setupGeppettoBindings() error {
 	log.Debug().Msg("Conversation API registered")
 
 	// Register ChatStepFactory
-	if err := js.RegisterFactory(e.rt, e.loop, e.stepSettings); err != nil {
-		log.Error().Err(err).Msg("Failed to register ChatStepFactory")
-		return err
-	}
+	// if err := js.RegisterFactory(e.rt, e.loop, e.stepSettings); err != nil {
+	// 	log.Error().Err(err).Msg("Failed to register ChatStepFactory")
+	// 	return err
+	// }
 	log.Debug().Msg("ChatStepFactory registered")
 
 	log.Debug().Msg("Geppetto JavaScript APIs setup complete")
