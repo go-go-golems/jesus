@@ -1,0 +1,2 @@
+- make it signal / ctrl-C killable for `jesus serve`
+- overhaul documentation now that we have require
