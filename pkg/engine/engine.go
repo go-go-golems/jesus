@@ -18,16 +18,17 @@ import (
 
 // Engine wraps the JavaScript runtime and data repositories
 type Engine struct {
-	rt           *goja.Runtime
-	loop         *eventloop.EventLoop         // Event loop for async operations
-	repos        repository.RepositoryManager // Repository manager for data access
-	jobs         chan EvalJob
-	handlers     map[string]map[string]*HandlerInfo // [path][method] -> handler info
-	files        map[string]goja.Callable           // [path] -> file handler
-	mu           sync.RWMutex
-	reqLogger    *RequestLogger         // Request logger for admin interface
-	currentReqID string                 // Track current request ID for logging
-	stepSettings *settings.StepSettings // Settings for AI steps
+	rt             *goja.Runtime
+	loop           *eventloop.EventLoop         // Event loop for async operations
+	repos          repository.RepositoryManager // Repository manager for data access
+	jobs           chan EvalJob
+	handlers       map[string]map[string]*HandlerInfo // [path][method] -> handler info
+	files          map[string]goja.Callable           // [path] -> file handler
+	mu             sync.RWMutex
+	reqLogger      *RequestLogger         // Request logger for admin interface
+	currentReqID   string                 // Track current request ID for logging
+	stepSettings   *settings.StepSettings // Settings for AI steps
+	moduleRegistry *gogogojamodules.Registry
 }
 
 // HandlerInfo contains handler function and metadata
@@ -67,11 +68,12 @@ func NewEngine(appDBPath, systemDBPath string) *Engine {
 	rt := goja.New()
 	log.Debug().Msg("Goja runtime created")
 
+	moduleRegistry := gogogojamodules.DefaultRegistry
 	gojaRegistry := require.NewRegistry()
-	gogogojamodules.EnableAll(gojaRegistry)
+	moduleRegistry.Enable(gojaRegistry)
 	gojaRegistry.Enable(rt)
 
-	dbModule, ok := gogogojamodules.GetModule("database").(*databasemod.DBModule)
+	dbModule, ok := moduleRegistry.GetModule("database").(*databasemod.DBModule)
 	if !ok || dbModule == nil {
 		log.Fatal().Msg("Database module not found or is not of type *databasemod.DBModule")
 	}
@@ -97,14 +99,15 @@ func NewEngine(appDBPath, systemDBPath string) *Engine {
 	log.Debug().Msg("AI step settings initialized")
 
 	e := &Engine{
-		rt:           rt,
-		loop:         loop,
-		repos:        repos,
-		jobs:         make(chan EvalJob, 1024),
-		handlers:     make(map[string]map[string]*HandlerInfo),
-		files:        make(map[string]goja.Callable),
-		reqLogger:    NewRequestLogger(100), // Keep last 100 requests
-		stepSettings: stepSettings,
+		rt:             rt,
+		loop:           loop,
+		repos:          repos,
+		jobs:           make(chan EvalJob, 1024),
+		handlers:       make(map[string]map[string]*HandlerInfo),
+		files:          make(map[string]goja.Callable),
+		reqLogger:      NewRequestLogger(100), // Keep last 100 requests
+		stepSettings:   stepSettings,
+		moduleRegistry: moduleRegistry,
 	}
 	log.Debug().Msg("Engine struct initialized")
 
@@ -291,6 +294,11 @@ func (e *Engine) GetRequestLogger() *RequestLogger {
 // GetRepositoryManager returns the repository manager
 func (e *Engine) GetRepositoryManager() repository.RepositoryManager {
 	return e.repos
+}
+
+// GetModuleRegistry returns the go-go-goja module registry.
+func (e *Engine) GetModuleRegistry() *gogogojamodules.Registry {
+	return e.moduleRegistry
 }
 
 // executeCode executes JavaScript code directly in the global scope
