@@ -12,6 +12,7 @@ require (
 	github.com/go-go-golems/clay v0.1.40
 	github.com/go-go-golems/geppetto v0.4.52
 	github.com/go-go-golems/glazed v0.5.52
+	github.com/go-go-golems/go-go-goja v0.0.4
 	github.com/go-go-golems/go-go-mcp v0.0.12
 	github.com/go-go-golems/pinocchio v0.4.33
 	github.com/google/uuid v1.6.0
@@ -52,7 +53,6 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-go-golems/bobatea v0.0.20 // indirect
 	github.com/go-go-golems/go-emrichen v0.0.9 // indirect
-	github.com/go-go-golems/go-go-goja v0.0.4 // indirect
 	github.com/go-openapi/errors v0.22.0 // indirect
 	github.com/go-openapi/strfmt v0.23.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
