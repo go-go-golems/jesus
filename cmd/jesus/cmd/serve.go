@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	geppettolayers "github.com/go-go-golems/geppetto/pkg/layers"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
@@ -18,7 +19,6 @@ import (
 	"github.com/go-go-golems/jesus/pkg/api"
 	"github.com/go-go-golems/jesus/pkg/engine"
 	"github.com/go-go-golems/jesus/pkg/web"
-	pinocchio_cmds "github.com/go-go-golems/pinocchio/pkg/cmds"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -48,8 +48,10 @@ func NewServeCmd() (*ServeCmd, error) {
 		return nil, errors.Wrap(err, "failed to create temporary step settings")
 	}
 
-	// Create Geppetto layers using pinocchio helper
-	geppettoLayers, err := pinocchio_cmds.CreateGeppettoLayers(tempSettings)
+	// Create Geppetto layers using geppetto helper
+	geppettoLayers, err := geppettolayers.CreateGeppettoLayers(
+		geppettolayers.WithDefaultsFromStepSettings(tempSettings),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create Geppetto layers")
 	}

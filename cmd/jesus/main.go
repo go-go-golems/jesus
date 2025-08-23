@@ -9,6 +9,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds/logging"
 	"github.com/go-go-golems/glazed/pkg/help"
+	helpCmd "github.com/go-go-golems/glazed/pkg/help/cmd"
 	"github.com/go-go-golems/jesus/cmd/jesus/cmd"
 	"github.com/go-go-golems/jesus/pkg/mcp"
 	"github.com/spf13/cobra"
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	// Set up help system for the root command
-	helpSystem.SetupCobraRootCommand(rootCmd)
+	helpCmd.SetupCobraRootCommand(helpSystem, rootCmd)
 
 	// Initialize Viper for configuration management
 	if err := clay.InitViper("js-web-server", rootCmd); err != nil {

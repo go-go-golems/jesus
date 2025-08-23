@@ -5,12 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
+	geppettolayers "github.com/go-go-golems/geppetto/pkg/layers"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/jesus/pkg/engine"
-	pinocchio_cmds "github.com/go-go-golems/pinocchio/pkg/cmds"
+	pinocchio_cmdlayers "github.com/go-go-golems/pinocchio/pkg/cmds/cmdlayers"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -37,10 +38,18 @@ func NewRunScriptsCmd() (*RunScriptsCmd, error) {
 		return nil, errors.Wrap(err, "failed to create step settings")
 	}
 
-	// Create Geppetto layers
-	geppettoLayers, err := pinocchio_cmds.CreateGeppettoLayers(tempSettings, pinocchio_cmds.WithHelpersLayer())
+	// Create Geppetto layers (with defaults from temporary step settings)
+	geppettoLayers, err := geppettolayers.CreateGeppettoLayers(
+		geppettolayers.WithDefaultsFromStepSettings(tempSettings),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create Geppetto layers")
+	}
+
+	// Add Geppetto helpers layer
+	helpersLayer, err := pinocchio_cmdlayers.NewHelpersParameterLayer()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create helpers layer")
 	}
 
 	// Create default layer for run-scripts specific settings
@@ -68,7 +77,7 @@ func NewRunScriptsCmd() (*RunScriptsCmd, error) {
 	}
 
 	// Combine all layers
-	allLayers := append(geppettoLayers, defaultLayer)
+	allLayers := append(append(geppettoLayers, helpersLayer), defaultLayer)
 
 	return &RunScriptsCmd{
 		CommandDescription: cmds.NewCommandDescription(
