@@ -22,14 +22,14 @@ import (
 // that include profile support specifically for the js-web-server application.
 func BuildCobraCommandWithServeMiddlewares(
 	cmd cmds.Command,
-	options ...cli.CobraParserOption,
+	options ...cli.CobraOption,
 ) (*cobra.Command, error) {
-	options_ := append([]cli.CobraParserOption{
+	options_ := append([]cli.CobraOption{
 		cli.WithCobraMiddlewaresFunc(GetServeCommandMiddlewares),
 		cli.WithCobraShortHelpLayers(layers.DefaultSlug, cmdlayers.GeppettoHelpersSlug),
 	}, options...)
 
-	return cli.BuildCobraCommandFromCommand(cmd, options_...)
+	return cli.BuildCobraCommand(cmd, options_...)
 }
 
 // GetServeCommandMiddlewares provides the middleware chain for js-web-server commands

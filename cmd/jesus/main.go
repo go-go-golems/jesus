@@ -9,6 +9,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds/logging"
 	"github.com/go-go-golems/glazed/pkg/help"
+	help_cmd "github.com/go-go-golems/glazed/pkg/help/cmd"
 	"github.com/go-go-golems/jesus/cmd/jesus/cmd"
 	"github.com/go-go-golems/jesus/pkg/mcp"
 	"github.com/spf13/cobra"
@@ -29,10 +30,10 @@ func main() {
 	}
 
 	// Set up help system for the root command
-	helpSystem.SetupCobraRootCommand(rootCmd)
+	help_cmd.SetupCobraRootCommand(helpSystem, rootCmd)
 
 	// Initialize Viper for configuration management
-	if err := clay.InitViper("js-web-server", rootCmd); err != nil {
+	if err := clay.InitViper("jesus", rootCmd); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize viper: %v\n", err)
 		os.Exit(1)
 	}
@@ -63,7 +64,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	executeCobraCmd, err := cli.BuildCobraCommandFromCommand(executeCmd)
+	executeCobraCmd, err := cli.BuildCobraCommand(executeCmd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error building execute command: %v\n", err)
 		os.Exit(1)
@@ -76,7 +77,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	testCobraCmd, err := cli.BuildCobraCommandFromCommand(testCmd)
+	testCobraCmd, err := cli.BuildCobraCommand(testCmd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error building test command: %v\n", err)
 		os.Exit(1)
@@ -105,7 +106,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	replCobraCmd, err := cli.BuildCobraCommandFromCommand(replCmd)
+	replCobraCmd, err := cli.BuildCobraCommand(replCmd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error building repl command: %v\n", err)
 		os.Exit(1)
@@ -241,7 +242,6 @@ testing:
     admin-port: "19090"
     app-db: ":memory:"
     system-db: ":memory:"
-
 #
 # You can manage this file using the 'js-web-server profiles' commands:
 # - list: List all profiles
