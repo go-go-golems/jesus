@@ -223,7 +223,7 @@ func (m Model) View() string {
 	var sb strings.Builder
 
 	// Title
-	sb.WriteString(m.styles.Title.Render(" JavaScript REPL (js-web-server) "))
+	sb.WriteString(m.styles.Title.Render(" JavaScript REPL (jesus) "))
 	sb.WriteString("\n\n")
 
 	// History with wrapping

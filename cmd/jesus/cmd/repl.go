@@ -38,7 +38,7 @@ The REPL provides:
 - Multiline input support (Ctrl+J for additional lines)
 - Command history
 - Built-in commands (type /help for list)
-- Integration with existing js-web-server configurations`),
+- Integration with existing jesus configurations`),
 			cmds.WithFlags(
 				parameters.NewParameterDefinition(
 					"multiline",

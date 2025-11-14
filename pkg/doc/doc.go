@@ -19,8 +19,8 @@ func GetDocsFS() embed.FS {
 	return docFS
 }
 
-// GetJSWebServerDocsFS returns a sub-filesystem containing just the js-web-server docs
-func GetJSWebServerDocsFS() (fs.FS, error) {
+// GetJesusDocsFS returns a sub-filesystem containing just the jesus docs
+func GetJesusDocsFS() (fs.FS, error) {
 	return fs.Sub(docFS, "docs")
 }
 

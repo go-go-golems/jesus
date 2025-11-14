@@ -16,7 +16,7 @@ import (
 	"github.com/go-go-golems/jesus/pkg/engine"
 	"github.com/go-go-golems/jesus/pkg/web"
 
-	// "github.com/go-go-golems/go-go-mcp/cmd/experiments/js-web-server/pkg/doc"
+	// "github.com/go-go-golems/go-go-mcp/cmd/experiments/jesus/pkg/doc"
 	"github.com/go-go-golems/go-go-mcp/pkg/embeddable"
 	"github.com/go-go-golems/go-go-mcp/pkg/protocol"
 	"github.com/google/uuid"

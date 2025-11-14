@@ -481,7 +481,7 @@ The console automatically captures all JavaScript console output and database op
 
 # Geppetto AI API Reference
 
-The js-web-server includes full integration with Geppetto's JavaScript API, providing powerful AI capabilities including conversations, embeddings, steps, and chat functionality. This section provides comprehensive documentation for using these AI features in your JavaScript applications.
+The jesus server includes full integration with Geppetto's JavaScript API, providing powerful AI capabilities including conversations, embeddings, steps, and chat functionality. This section provides comprehensive documentation for using these AI features in your JavaScript applications.
 
 ## AI API Overview
 
@@ -1260,4 +1260,4 @@ AI capabilities are configured through profile management. Common configurations
 - **Timeout settings**: Configure request timeouts
 - **Embedding models**: Select embedding providers and models
 
-Use `go run ./cmd/experiments/js-web-server profiles list` to see available configurations. 
+Use `go run ./cmd/experiments/jesus profiles list` to see available configurations. 

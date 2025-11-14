@@ -1,7 +1,7 @@
-mcp-js-web-server-o3
+mcp-jesus-o3
 scripts/
 *.sqlite
 *.db
-js-web-server
+jesus
 .git-commit-message.yaml
 dist/

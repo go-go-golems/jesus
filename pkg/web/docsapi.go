@@ -7,7 +7,7 @@ import (
 	"net/http"
 	// "regexp"
 	// "strings"
-	// "github.com/go-go-golems/go-go-mcp/cmd/experiments/js-web-server/pkg/doc"
+	// "github.com/go-go-golems/go-go-mcp/cmd/experiments/jesus/pkg/doc"
 )
 
 // CodeExample represents a JavaScript code example extracted from docs
@@ -44,7 +44,7 @@ func handleExamples(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Documentation examples not available", http.StatusNotImplemented)
 
 	/*
-		docsFS, err := doc.GetJSWebServerDocsFS()
+		docsFS, err := doc.GetJesusDocsFS()
 		if err != nil {
 			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
 			return
@@ -67,7 +67,7 @@ func handleDocsList(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Documentation list not available", http.StatusNotImplemented)
 
 	/*
-		docsFS, err := doc.GetJSWebServerDocsFS()
+		docsFS, err := doc.GetJesusDocsFS()
 		if err != nil {
 			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
 			return
@@ -106,7 +106,7 @@ func handleDocContent(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Documentation content not available", http.StatusNotImplemented)
 
 	/*
-		docsFS, err := doc.GetJSWebServerDocsFS()
+		docsFS, err := doc.GetJesusDocsFS()
 		if err != nil {
 			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
 			return

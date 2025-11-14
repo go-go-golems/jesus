@@ -36,7 +36,7 @@ func NewExecuteCmd() (*ExecuteCmd, error) {
 			"execute",
 			cmds.WithShort("Execute JavaScript code on the server"),
 			cmds.WithLong(`
-Execute JavaScript code on a running js-web-server instance.
+Execute JavaScript code on a running jesus instance.
 
 The input can be either:
 - Direct JavaScript code string
