@@ -1,3 +1,15 @@
+---
+Title: JavaScript API Reference
+Slug: javascript-api-reference
+Short: Reference for the jesus runtime APIs (HTTP, DB, AI, Express, modules).
+SectionType: GeneralTopic
+Topics:
+  - javascript
+  - api
+IsTopLevel: true
+ShowPerDefault: true
+---
+
 # JavaScript API Reference
 
 ## Overview

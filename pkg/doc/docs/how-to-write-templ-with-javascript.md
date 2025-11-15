@@ -1,3 +1,15 @@
+---
+Title: How to Write templ with JavaScript
+Slug: templ-javascript-guide
+Short: Best practices for mixing templ components with inlined JavaScript helpers.
+SectionType: Tutorial
+Topics:
+  - templ
+  - javascript
+IsTopLevel: true
+ShowPerDefault: true
+---
+
 # How to Write Templ Templates with JavaScript Integration
 
 ## Overview

@@ -1,13 +1,18 @@
 package web
 
 import (
-	// "encoding/json"
-	// "fmt"
-	// "io/fs"
+	"encoding/json"
+	"fmt"
+	"io/fs"
 	"net/http"
-	// "regexp"
-	// "strings"
-	// "github.com/go-go-golems/go-go-mcp/cmd/experiments/jesus/pkg/doc"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"unicode"
+
+	gogogojamodules "github.com/go-go-golems/go-go-goja/modules"
+	"github.com/go-go-golems/jesus/pkg/doc"
 )
 
 // CodeExample represents a JavaScript code example extracted from docs
@@ -32,66 +37,70 @@ func DocsAPIHandler() http.HandlerFunc {
 			handleDocsList(w, r)
 		case "content":
 			handleDocContent(w, r)
+		case "modules":
+			handleModuleDocs(w, r)
 		default:
-			http.Error(w, "Invalid action. Use: examples, list, or content", http.StatusBadRequest)
+			http.Error(w, "Invalid action. Use: examples, list, content, or modules", http.StatusBadRequest)
 		}
 	}
 }
 
 // handleExamples extracts and returns JavaScript code examples from docs
 func handleExamples(w http.ResponseWriter, r *http.Request) {
-	// TODO: Re-implement once doc package is available
-	http.Error(w, "Documentation examples not available", http.StatusNotImplemented)
+	docsFS, err := doc.GetJesusDocsFS()
+	if err != nil {
+		http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
+		return
+	}
 
-	/*
-		docsFS, err := doc.GetJesusDocsFS()
-		if err != nil {
-			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
-			return
-		}
+	examples, err := extractCodeExamples(docsFS)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to extract examples: %v", err), http.StatusInternalServerError)
+		return
+	}
 
-		examples, err := extractCodeExamples(docsFS)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to extract examples: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(examples)
-	*/
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(examples); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 // handleDocsList returns a list of available documentation files
 func handleDocsList(w http.ResponseWriter, r *http.Request) {
-	// TODO: Re-implement once doc package is available
-	http.Error(w, "Documentation list not available", http.StatusNotImplemented)
+	type docEntry struct {
+		Name  string `json:"name"`
+		Title string `json:"title"`
+	}
 
-	/*
-		docsFS, err := doc.GetJesusDocsFS()
-		if err != nil {
-			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
-			return
+	docsFS, err := doc.GetJesusDocsFS()
+	if err != nil {
+		http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
+		return
+	}
+
+	files, err := fs.ReadDir(docsFS, ".")
+	if err != nil {
+		http.Error(w, "Failed to read docs directory", http.StatusInternalServerError)
+		return
+	}
+
+	var docs []docEntry
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") {
+			continue
 		}
 
-		files, err := fs.ReadDir(docsFS, ".")
-		if err != nil {
-			http.Error(w, "Failed to read docs directory", http.StatusInternalServerError)
-			return
-		}
+		name := file.Name()
+		docs = append(docs, docEntry{
+			Name:  name,
+			Title: humanizeDocTitle(name),
+		})
+	}
 
-		var docs []map[string]interface{}
-		for _, file := range files {
-			if strings.HasSuffix(file.Name(), ".md") {
-				docs = append(docs, map[string]interface{}{
-					"name":  file.Name(),
-					"title": strings.TrimSuffix(strings.ReplaceAll(file.Name(), "-", " "), ".md"),
-				})
-			}
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(docs)
-	*/
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(docs); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 // handleDocContent returns the content of a specific documentation file
@@ -102,38 +111,73 @@ func handleDocContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Re-implement once doc package is available
-	http.Error(w, "Documentation content not available", http.StatusNotImplemented)
+	cleanPath := filepath.Clean(filename)
+	if strings.Contains(cleanPath, "..") {
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+	if filepath.Ext(cleanPath) != ".md" {
+		http.Error(w, "Only markdown docs are supported", http.StatusBadRequest)
+		return
+	}
 
-	/*
-		docsFS, err := doc.GetJesusDocsFS()
-		if err != nil {
-			http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
-			return
-		}
+	docsFS, err := doc.GetJesusDocsFS()
+	if err != nil {
+		http.Error(w, "Failed to access docs filesystem", http.StatusInternalServerError)
+		return
+	}
 
-		content, err := fs.ReadFile(docsFS, filename)
-		if err != nil {
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
+	content, err := fs.ReadFile(docsFS, cleanPath)
+	if err != nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"filename": filename,
-			"content":  string(content),
+	response := map[string]string{
+		"filename": cleanPath,
+		"content":  string(content),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+// handleModuleDocs returns documentation for registered go-go-goja native modules
+func handleModuleDocs(w http.ResponseWriter, r *http.Request) {
+	type moduleEntry struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+
+	docs := gogogojamodules.DefaultRegistry.GetDocumentation()
+	names := make([]string, 0, len(docs))
+	for name := range docs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	entries := make([]moduleEntry, 0, len(names))
+	for _, name := range names {
+		entries = append(entries, moduleEntry{
+			Name:        name,
+			Description: strings.TrimSpace(docs[name]),
 		})
-	*/
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(entries); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 // extractCodeExamples extracts JavaScript code blocks from markdown files
-// TODO: Re-implement once doc package is available
-/*
 func extractCodeExamples(docsFS fs.FS) ([]CodeExample, error) {
 	var examples []CodeExample
 
 	// Regular expression to match JavaScript code blocks
-	jsCodeBlockRe := regexp.MustCompile(`(?s)` + "```javascript\n(.*?)\n```")
+	jsCodeBlockRe := regexp.MustCompile("(?s)" + "```(?:javascript|js)\\n(.*?)\\n```")
 
 	files, err := fs.ReadDir(docsFS, ".")
 	if err != nil {
@@ -184,10 +228,8 @@ func extractCodeExamples(docsFS fs.FS) ([]CodeExample, error) {
 
 	return examples, nil
 }
-*/
 
 // getCategoryFromFilename determines the category based on the filename
-/*
 func getCategoryFromFilename(filename string) string {
 	switch {
 	case strings.Contains(filename, "javascript-developer"):
@@ -269,4 +311,26 @@ func generateExampleMetadata(code string, category string) (string, string) {
 
 	return name, description
 }
-*/
+
+func humanizeDocTitle(filename string) string {
+	title := strings.TrimSuffix(filename, ".md")
+	title = strings.ReplaceAll(title, "-", " ")
+	title = strings.TrimSpace(title)
+
+	parts := strings.Fields(title)
+	for i, part := range parts {
+		if len(part) == 0 {
+			continue
+		}
+
+		runes := []rune(part)
+		runes[0] = unicode.ToUpper(runes[0])
+		parts[i] = string(runes)
+	}
+
+	if len(parts) == 0 {
+		return title
+	}
+
+	return strings.Join(parts, " ")
+}

@@ -1,3 +1,15 @@
+---
+Title: JavaScript Application Developer Guide
+Slug: javascript-developer-guide
+Short: End-to-end developer workflow for building apps in the jesus playground.
+SectionType: Tutorial
+Topics:
+  - javascript
+  - development
+IsTopLevel: true
+ShowPerDefault: true
+---
+
 # JavaScript Application Developer Guide
 
 ## Table of Contents
@@ -1883,4 +1895,3 @@ This approach provides:
 - Log errors server-side for debugging
 - Use appropriate HTTP status codes
 - Implement graceful degradation for non-critical failures
-

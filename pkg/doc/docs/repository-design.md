@@ -1,3 +1,15 @@
+---
+Title: Repository Pattern Design
+Slug: repository-design
+Short: Design notes for the script repository and execution history storage.
+SectionType: GeneralTopic
+Topics:
+  - architecture
+  - repository
+IsTopLevel: true
+ShowPerDefault: true
+---
+
 # Repository Pattern Design - Future Source Revision System
 
 ## Current Implementation

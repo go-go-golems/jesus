@@ -10,6 +10,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/help"
 	help_cmd "github.com/go-go-golems/glazed/pkg/help/cmd"
 	"github.com/go-go-golems/jesus/cmd/jesus/cmd"
+	"github.com/go-go-golems/jesus/pkg/doc"
 	"github.com/go-go-golems/jesus/pkg/mcp"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +18,12 @@ import (
 func main() {
 	// Initialize help system
 	helpSystem := help.NewHelpSystem()
+
+	// Load embedded documentation into the Glazed help system
+	if err := doc.AddDocToHelpSystem(helpSystem); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load documentation: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Create root command
 	rootCmd := &cobra.Command{

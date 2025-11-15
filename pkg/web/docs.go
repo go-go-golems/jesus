@@ -12,19 +12,18 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 
+	"github.com/go-go-golems/jesus/pkg/doc"
 	"github.com/go-go-golems/jesus/pkg/web/templates"
-	// "github.com/go-go-golems/go-go-mcp/cmd/experiments/jesus/pkg/doc"
 )
 
 var docsFS fs.FS
 
 func init() {
-	// TODO: Implement docs filesystem
-	// var err error
-	// docsFS, err = doc.GetJesusDocsFS()
-	// if err != nil {
-	// 	panic("Failed to initialize docs filesystem: " + err.Error())
-	// }
+	var err error
+	docsFS, err = doc.GetJesusDocsFS()
+	if err != nil {
+		panic("Failed to initialize docs filesystem: " + err.Error())
+	}
 }
 
 // Markdown renderer with extensions
