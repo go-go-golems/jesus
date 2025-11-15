@@ -3,12 +3,14 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-go-golems/jesus/pkg/api"
@@ -26,11 +28,14 @@ import (
 
 // WebServerMCP represents the MCP server instance with dynamic port allocation
 type WebServerMCP struct {
-	JSEngine     *engine.Engine
-	JSPort       int
-	AdminPort    int
-	JSBaseURL    string
-	AdminBaseURL string
+	JSEngine        *engine.Engine
+	JSPort          int
+	AdminPort       int
+	JSBaseURL       string
+	AdminBaseURL    string
+	jsHTTPServer    *http.Server
+	adminHTTPServer *http.Server
+	shutdownOnce    sync.Once
 }
 
 // GlobalWebServerMCP is the global MCP server instance
@@ -68,6 +73,45 @@ func NewWebServerMCP() (*WebServerMCP, error) {
 	}
 
 	return server, nil
+}
+
+// Shutdown gracefully stops the HTTP servers and closes the JavaScript engine.
+func (s *WebServerMCP) Shutdown(ctx context.Context) error {
+	if s == nil {
+		return nil
+	}
+
+	if ctx == nil || ctx.Err() != nil {
+		ctx = context.Background()
+	}
+
+	var errs []error
+
+	s.shutdownOnce.Do(func() {
+		shutdownHTTPServer := func(name string, srv *http.Server) {
+			if srv == nil {
+				return
+			}
+
+			shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			if err := srv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errs = append(errs, fmt.Errorf("%s shutdown: %w", name, err))
+			}
+		}
+
+		shutdownHTTPServer("js-server", s.jsHTTPServer)
+		shutdownHTTPServer("admin-server", s.adminHTTPServer)
+
+		if s.JSEngine != nil {
+			if err := s.JSEngine.Close(); err != nil {
+				errs = append(errs, fmt.Errorf("engine shutdown: %w", err))
+			}
+		}
+	})
+
+	return errors.Join(errs...)
 }
 
 // AddMCPCommand adds the MCP command to the root command
@@ -200,8 +244,14 @@ func initializeJSEngineForMCP(ctx context.Context) error {
 	go func() {
 		jsRouter := web.SetupJSRoutes(GlobalWebServerMCP.JSEngine)
 		jsAddr := ":" + strconv.Itoa(GlobalWebServerMCP.JSPort)
+		jsServer := &http.Server{
+			Addr:              jsAddr,
+			Handler:           jsRouter,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		GlobalWebServerMCP.jsHTTPServer = jsServer
 		log.Info().Str("js_address", jsAddr).Msg("Starting JavaScript web server for MCP mode")
-		if err := http.ListenAndServe(jsAddr, jsRouter); err != nil {
+		if err := jsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error().Err(err).Msg("JavaScript web server failed")
 		}
 	}()
@@ -212,10 +262,27 @@ func initializeJSEngineForMCP(ctx context.Context) error {
 		log.Debug().Msg("Registered API endpoint: POST /v1/execute (MCP mode)")
 
 		adminAddr := ":" + strconv.Itoa(GlobalWebServerMCP.AdminPort)
+		adminServer := &http.Server{
+			Addr:              adminAddr,
+			Handler:           adminRouter,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		GlobalWebServerMCP.adminHTTPServer = adminServer
 		log.Info().Str("admin_address", adminAddr).Msg("Starting admin interface server for MCP mode")
 		log.Info().Str("admin_console", GlobalWebServerMCP.AdminBaseURL+"/admin/logs").Msg("Admin console available")
-		if err := http.ListenAndServe(adminAddr, adminRouter); err != nil {
+		if err := adminServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error().Err(err).Msg("Admin interface server failed")
+		}
+	}()
+
+	// Shut down background services when the MCP context is cancelled.
+	go func() {
+		<-ctx.Done()
+		log.Info().Msg("MCP context cancelled, shutting down servers")
+		if err := GlobalWebServerMCP.Shutdown(context.Background()); err != nil {
+			log.Error().Err(err).Msg("Failed to shut down MCP servers cleanly")
+		} else {
+			log.Info().Msg("MCP servers shut down cleanly")
 		}
 	}()
 

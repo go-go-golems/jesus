@@ -6,3 +6,4 @@ jesus
 .git-commit-message.yaml
 dist/
 *.log
+.gocache
