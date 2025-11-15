@@ -71,7 +71,7 @@ The server provides:
 - RESTful API for JavaScript execution
 
 Examples:
-  serve --port 8080 --scripts ./scripts
+  serve --port 9922 --scripts ./scripts
   serve --app-db app.db --system-db system.db --admin-port 9090
 			`),
 			cmds.WithFlags(
@@ -79,7 +79,7 @@ Examples:
 					"port",
 					parameters.ParameterTypeString,
 					parameters.WithHelp("HTTP port for JavaScript web server"),
-					parameters.WithDefault("8080"),
+					parameters.WithDefault("9922"),
 					parameters.WithShortFlag("p"),
 				),
 				parameters.NewParameterDefinition(

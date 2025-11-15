@@ -50,7 +50,7 @@ func findFreePort(startPort int) (int, error) {
 
 // NewWebServerMCP creates a new WebServerMCP instance with free ports
 func NewWebServerMCP() (*WebServerMCP, error) {
-	jsPort, err := findFreePort(8080)
+	jsPort, err := findFreePort(9922)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find free JS port: %w", err)
 	}
@@ -115,7 +115,7 @@ Admin console: %s/admin/logs
 		// 	embeddable.WithStringArg("absolutePath", "Absolute path to the JavaScript file to execute", true),
 		// ),
 		embeddable.WithCommandCustomizer(func(cmd *cobra.Command) error {
-			cmd.Flags().String("js-port", "8080", "HTTP port for JavaScript web server")
+			cmd.Flags().String("js-port", "9922", "HTTP port for JavaScript web server")
 			cmd.Flags().String("admin-port", "9090", "HTTP port for admin/system interface")
 			cmd.Flags().String("app-db", "jsserver.db", "SQLite database path for application data (accessible via db.* in JavaScript)")
 			cmd.Flags().String("system-db", "jsserver-system.db", "SQLite database path for system operations (execution logs, request logs)")

@@ -6,7 +6,7 @@ A dynamic, JavaScript-powered web server built in Go that provides an Express.js
 
 ```bash
 # Start the server
-go run ./cmd/jesus serve -p 8080
+go run ./cmd/jesus serve -p 9922
 
 # Execute JavaScript code (Express.js style)
 go run ./cmd/jesus execute "app.get('/hello', (req, res) => res.send('Hello World!'))"
@@ -18,7 +18,7 @@ go run ./cmd/jesus repl
 go run ./cmd/jesus test
 ```
 
-Then visit `http://localhost:8080/hello` to see your endpoint in action!
+Then visit `http://localhost:9922/hello` to see your endpoint in action!
 
 ## ✨ Features
 
@@ -148,7 +148,7 @@ const posts = db.query("SELECT * FROM posts ORDER BY created_at DESC");
 
 ```bash
 # Start server with custom configuration
-go run ./cmd/jesus serve --port 8080 --db data.sqlite --log-level info
+go run ./cmd/jesus serve --port 9922 --db data.sqlite --log-level info
 
 # Load JavaScript files on startup
 go run ./cmd/jesus serve --scripts ./my-scripts/
@@ -167,7 +167,7 @@ go run ./cmd/jesus execute script.js
 go run ./cmd/jesus execute "console.log('Hello from CLI')"
 
 # Test server endpoints
-go run ./cmd/jesus test --url http://localhost:8080
+go run ./cmd/jesus test --url http://localhost:9922
 ```
 
 ### Interactive REPL
@@ -269,10 +269,10 @@ console.log('Greeting endpoint created!');
 
 ### 3. Test Your Endpoint
 
-Visit `http://localhost:8080/greet?name=Alice` or use curl:
+Visit `http://localhost:9922/greet?name=Alice` or use curl:
 
 ```bash
-curl "http://localhost:8080/greet?name=Alice"
+curl "http://localhost:9922/greet?name=Alice"
 # {"message":"Hello, Alice!","timestamp":"2024-01-15T10:30:00.000Z"}
 ```
 
@@ -301,7 +301,7 @@ console.log('Users API created!');
 "
 ```
 
-Test it: `curl http://localhost:8080/api/users`
+Test it: `curl http://localhost:9922/api/users`
 
 ### 5. Build a Complete Web Page
 
@@ -337,7 +337,7 @@ console.log('User directory page created!');
 "
 ```
 
-Visit `http://localhost:8080/users` to see your web page!
+Visit `http://localhost:9922/users` to see your web page!
 
 ## 🚀 Express.js API
 
@@ -546,14 +546,14 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/jesus .
-EXPOSE 8080
+EXPOSE 9922
 CMD ["./jesus", "serve"]
 ```
 
 ### Environment Variables
 
 ```bash
-export PORT=8080
+export PORT=9922
 export DB_PATH=/data/production.sqlite
 export LOG_LEVEL=info
 ```

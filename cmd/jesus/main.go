@@ -160,7 +160,7 @@ development:
     openai-api-key: "[REDACTED:api-key]" # Replace with your key or use environment variable
   # Server settings for development
   default:
-    port: "8080"
+    port: "9922"
     admin-port: "9090"
     app-db: "dev-data.sqlite"
     system-db: "dev-system.sqlite"
@@ -181,7 +181,7 @@ production:
     openai-api-key: "[REDACTED:api-key]" # Use environment variable in production
   # Server settings for production
   default:
-    port: "8080"
+    port: "9922"
     admin-port: "9090"
     app-db: "/var/lib/jesus/data.sqlite"
     system-db: "/var/lib/jesus/system.sqlite"

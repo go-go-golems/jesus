@@ -5,3 +5,4 @@ scripts/
 jesus
 .git-commit-message.yaml
 dist/
+*.log

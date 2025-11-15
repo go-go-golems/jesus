@@ -1267,5 +1267,5 @@ app.post("/api/tasks/sample", (req, res) => {
 
 console.log("🎯 Task Manager Web Application Ready!");
 console.log("📱 Features: Create, Read, Update, Delete tasks with priorities, categories, and notes");
-console.log("🌐 Visit http://localhost:8080/ to access the full-featured task manager");
+console.log("🌐 Visit http://localhost:9922/ to access the full-featured task manager");
 console.log("🔧 API endpoints available: GET/POST/PUT/PATCH/DELETE /api/tasks/*");
