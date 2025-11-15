@@ -161,12 +161,12 @@ Admin console: %s/admin/logs
 		embeddable.WithCommandCustomizer(func(cmd *cobra.Command) error {
 			cmd.Flags().String("js-port", "9922", "HTTP port for JavaScript web server")
 			cmd.Flags().String("admin-port", "9090", "HTTP port for admin/system interface")
-			cmd.Flags().String("app-db", "jsserver.db", "SQLite database path for application data (accessible via db.* in JavaScript)")
-			cmd.Flags().String("system-db", "jsserver-system.db", "SQLite database path for system operations (execution logs, request logs)")
+			cmd.Flags().String("app-db", "jesus.db", "SQLite database path for application data (accessible via db.* in JavaScript)")
+			cmd.Flags().String("system-db", "jesus-system.db", "SQLite database path for system operations (execution logs, request logs)")
 			return nil
 		}),
 		embeddable.WithHooks(&embeddable.Hooks{
-			OnServerStart: initializeJSEngineForMCP,
+			OnServerStart: onServerStart,
 		}),
 	)
 	if err != nil {
@@ -177,6 +177,25 @@ Admin console: %s/admin/logs
 }
 
 // initializeJSEngineForMCP initializes the JavaScript engine and HTTP server when MCP starts
+func onServerStart(ctx context.Context) error {
+	transport := "stdio"
+
+	if flags, ok := embeddable.GetCommandFlags(ctx); ok {
+		if transportFlag, exists := flags["transport"]; exists {
+			if transportStr, isString := transportFlag.(string); isString && transportStr != "" {
+				transport = transportStr
+			}
+		}
+	}
+
+	if transport == "stdio" {
+		log.Debug().Msg("Deferring JavaScript engine initialization until first tool invocation (stdio transport)")
+		return nil
+	}
+
+	return initializeJSEngineForMCP(ctx)
+}
+
 func initializeJSEngineForMCP(ctx context.Context) error {
 	log.Info().Msg("Initializing JavaScript engine for MCP")
 
@@ -184,14 +203,9 @@ func initializeJSEngineForMCP(ctx context.Context) error {
 		return fmt.Errorf("GlobalWebServerMCP not initialized")
 	}
 
-	// Ensure scripts directory exists
-	if err := os.MkdirAll("scripts", 0755); err != nil {
-		return fmt.Errorf("failed to create scripts directory: %w", err)
-	}
-
 	// Get configuration from command flags
-	appDBPath := "jsserver.db"                // default
-	systemDBPath := "jsserver-system.db"      // default
+	appDBPath := "jesus.db"                   // default
+	systemDBPath := "jesus-system.db"         // default
 	jsPort := GlobalWebServerMCP.JSPort       // default from NewWebServerMCP
 	adminPort := GlobalWebServerMCP.AdminPort // default from NewWebServerMCP
 
