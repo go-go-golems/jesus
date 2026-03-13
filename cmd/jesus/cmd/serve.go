@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	geppettosections "github.com/go-go-golems/geppetto/pkg/sections"
-	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/fields"
 	"github.com/go-go-golems/glazed/pkg/cmds/values"
@@ -40,31 +38,16 @@ type ServeSettings struct {
 // Ensure ServeCmd implements BareCommand
 var _ cmds.BareCommand = &ServeCmd{}
 
-// NewServeCmd creates a new serve command with Geppetto layers
+// NewServeCmd creates a new serve command.
 func NewServeCmd() (*ServeCmd, error) {
-	// Create temporary step settings for Geppetto layers
-	tempSettings, err := settings.NewStepSettings()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create temporary step settings")
-	}
-
-	// Create Geppetto sections using the façade packages.
-	geppettoSections, err := geppettosections.CreateGeppettoSections(
-		geppettosections.WithDefaultsFromStepSettings(tempSettings),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create Geppetto sections")
-	}
-
 	return &ServeCmd{
 		CommandDescription: cmds.NewCommandDescription(
 			"serve",
-			cmds.WithShort("Start the JavaScript playground server with Geppetto AI capabilities"),
+			cmds.WithShort("Start the JavaScript playground server"),
 			cmds.WithLong(`
-Start the JavaScript playground server with integrated Geppetto AI capabilities.
+Start the JavaScript playground server.
 
 The server provides:
-- JavaScript runtime with Geppetto APIs (Conversation, ChatStepFactory)
 - SQLite integration for application and system data
 - Admin interface for monitoring and management
 - Script loading from directory on startup
@@ -109,8 +92,6 @@ Examples:
 					fields.WithShortFlag("s"),
 				),
 			),
-			// Add Geppetto sections for AI configuration.
-			cmds.WithSections(geppettoSections...),
 		),
 	}, nil
 }
@@ -124,14 +105,6 @@ func (c *ServeCmd) Run(ctx context.Context, parsedValues *values.Values) error {
 	if err := parsedValues.DecodeSectionInto(values.DefaultSlug, s); err != nil {
 		return errors.Wrap(err, "failed to parse serve settings")
 	}
-
-	// Create StepSettings from parsed Geppetto sections for AI integration.
-	stepSettings, err := settings.NewStepSettingsFromParsedValues(parsedValues)
-	if err != nil {
-		return errors.Wrap(err, "failed to create step settings from parsed values")
-	}
-
-	log.Debug().Interface("settings", stepSettings).Msg("Loaded AI step settings for JavaScript engine")
 
 	// Find free ports
 	requestedPort, err := strconv.Atoi(s.Port)
@@ -168,13 +141,10 @@ func (c *ServeCmd) Run(ctx context.Context, parsedValues *values.Values) error {
 	}
 	log.Debug().Msg("Scripts directory ready")
 
-	// Initialize JavaScript engine with enhanced Geppetto integration
+	// Initialize the JavaScript engine.
 	log.Debug().Str("appDatabase", s.AppDB).Str("systemDatabase", s.SystemDB).Msg("Initializing JavaScript engine")
 	jsEngine := engine.NewEngine(s.AppDB, s.SystemDB)
 
-	// Enhanced: Pass stepSettings to engine for better AI integration
-	// This would require updating the engine to accept stepSettings
-	// For now, we'll keep the existing bootstrap initialization
 	if err := jsEngine.Init("bootstrap.js"); err != nil {
 		log.Warn().Err(err).Msg("Failed to load bootstrap.js")
 	}

@@ -44,7 +44,6 @@ The input can be either:
 - Path to a JavaScript file
 
 The code will be executed in the server's JavaScript runtime with access to:
-- Geppetto APIs (Conversation, ChatStepFactory)
 - Database bindings (db.query, db.exec)
 - HTTP route registration (app.get, app.post, etc.)
 - Console logging and global state
@@ -52,14 +51,14 @@ The code will be executed in the server's JavaScript runtime with access to:
 Examples:
   execute "console.log('Hello World')"
   execute ./scripts/test.js
-  execute --url http://localhost:8081 "globalState.counter++"
+  execute --url http://localhost:9090 "globalState.counter++"
 			`),
 			cmds.WithFlags(
 				fields.New(
 					"url",
 					fields.TypeString,
 					fields.WithHelp("Server URL"),
-					fields.WithDefault("http://localhost:8080"),
+					fields.WithDefault("http://localhost:9090"),
 					fields.WithShortFlag("u"),
 				),
 			),

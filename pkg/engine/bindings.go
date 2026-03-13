@@ -53,9 +53,6 @@ func (e *Engine) setupBindings() {
 		log.Error().Err(err).Msg("Failed to initialize globalState")
 	}
 
-	// Setup Geppetto JavaScript APIs
-	e.setupGeppettoAPIs()
-
 	log.Debug().Msg("JavaScript bindings configured")
 }
 
@@ -241,23 +238,4 @@ func (e *Engine) captureConsoleOutput(result *EvalResult, level string, args ...
 	case "debug":
 		e.consoleDebug(args...)
 	}
-}
-
-// setupGeppettoAPIs configures Geppetto-facing JavaScript APIs.
-func (e *Engine) setupGeppettoAPIs() {
-	log.Debug().Msg("Setting up Geppetto JavaScript APIs")
-
-	// The legacy geppetto/pkg/js registration helpers were removed. Keep the
-	// placeholder so the engine can compile until jesus reintroduces these APIs
-	// through the current Geppetto runtime surface.
-
-	log.Debug().Msg("Geppetto JavaScript APIs setup complete")
-}
-
-// setupGeppettoBindings sets up only the Geppetto API bindings.
-func (e *Engine) setupGeppettoBindings() error {
-	log.Debug().Msg("Setting up Geppetto JavaScript APIs")
-
-	log.Debug().Msg("Geppetto JavaScript APIs setup complete")
-	return nil
 }

@@ -5,14 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	geppettosections "github.com/go-go-golems/geppetto/pkg/sections"
-	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/fields"
 	"github.com/go-go-golems/glazed/pkg/cmds/schema"
 	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/go-go-golems/jesus/pkg/engine"
-	pinocchio_cmdlayers "github.com/go-go-golems/pinocchio/pkg/cmds/cmdlayers"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -33,74 +30,38 @@ var _ cmds.BareCommand = &RunScriptsCmd{}
 
 // NewRunScriptsCmd creates a new run-scripts command
 func NewRunScriptsCmd() (*RunScriptsCmd, error) {
-	// Create temporary step settings for Geppetto layers
-	tempSettings, err := settings.NewStepSettings()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create step settings")
-	}
-
-	// Create Geppetto sections (with defaults from temporary step settings).
-	geppettoSections, err := geppettosections.CreateGeppettoSections(
-		geppettosections.WithDefaultsFromStepSettings(tempSettings),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create Geppetto sections")
-	}
-
-	// Add Geppetto helpers section.
-	helpersSection, err := pinocchio_cmdlayers.NewHelpersParameterLayer()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create helpers section")
-	}
-
-	// Create the default section for run-scripts specific settings.
-	defaultSection, err := schema.NewSection(
-		schema.DefaultSlug,
-		"Run Scripts Configuration",
-		schema.WithFields(
-			fields.New(
-				"scripts",
-				fields.TypeString,
-				fields.WithHelp("Directory containing JavaScript files to execute"),
-				fields.WithShortFlag("s"),
-				fields.WithDefault("./scripts"),
-			),
-			fields.New(
-				"files",
-				fields.TypeStringList,
-				fields.WithHelp("Specific JavaScript files to execute (if not provided, all .js files in scripts directory)"),
-				fields.WithShortFlag("f"),
-			),
-		),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create default section")
-	}
-
-	// Combine all sections in one schema.
-	allSections := append(append([]schema.Section{}, geppettoSections...), helpersSection, defaultSection)
-
 	return &RunScriptsCmd{
 		CommandDescription: cmds.NewCommandDescription(
 			"run-scripts",
-			cmds.WithShort("Execute JavaScript files with Geppetto AI capabilities"),
-			cmds.WithLong(`Execute JavaScript files with Geppetto AI capabilities without starting the web server.
-
-This command loads and executes JavaScript files in a Geppetto-enabled environment, 
-providing access to Conversation and ChatStepFactory APIs for AI interactions.
+			cmds.WithShort("Execute JavaScript files without starting the web server"),
+			cmds.WithLong(`Execute JavaScript files without starting the web server.
 
 The command is useful for:
 • Running test scripts
-• Executing batch AI operations  
-• Testing Geppetto API functionality
-• Running standalone JavaScript with AI capabilities
+• Executing batch operations
+• Testing route registration and runtime state
+• Running standalone JavaScript with database bindings
 
 Examples:
   run-scripts --scripts ./tests
   run-scripts --files test1.js,test2.js
-  run-scripts --profile 4o-mini --scripts ./ai-tests
-  run-scripts --profile claude-dev --files inference_test.js`),
-			cmds.WithSections(allSections...),
+  run-scripts --scripts ./jobs
+  run-scripts --files seed.js,migrate.js`),
+			cmds.WithFlags(
+				fields.New(
+					"scripts",
+					fields.TypeString,
+					fields.WithHelp("Directory containing JavaScript files to execute"),
+					fields.WithShortFlag("s"),
+					fields.WithDefault("./scripts"),
+				),
+				fields.New(
+					"files",
+					fields.TypeStringList,
+					fields.WithHelp("Specific JavaScript files to execute (if not provided, all .js files in scripts directory)"),
+					fields.WithShortFlag("f"),
+				),
+			),
 		),
 	}, nil
 }
@@ -113,27 +74,11 @@ func (cmd *RunScriptsCmd) Run(ctx context.Context, parsedValues *values.Values) 
 		return errors.Wrap(err, "failed to parse settings")
 	}
 
-	// Create step settings from parsed values.
-	stepSettings, err := settings.NewStepSettings()
-	if err != nil {
-		return errors.Wrap(err, "failed to create step settings")
-	}
-
-	if err := stepSettings.UpdateFromParsedValues(parsedValues); err != nil {
-		return errors.Wrap(err, "failed to update step settings from parsed values")
-	}
-
 	log.Info().Str("scripts_dir", runSettings.ScriptsDir).Msg("Starting JavaScript script execution")
 
 	// Initialize JavaScript engine with in-memory databases (since we don't need persistence for script execution)
 	jsEngine := engine.NewEngine(":memory:", ":memory:")
 	defer func() { _ = jsEngine.Close() }()
-
-	// Update engine with our step settings for AI capabilities
-	err = jsEngine.UpdateStepSettings(stepSettings)
-	if err != nil {
-		return errors.Wrap(err, "failed to update step settings")
-	}
 
 	// Determine which files to execute
 	var filesToExecute []string
