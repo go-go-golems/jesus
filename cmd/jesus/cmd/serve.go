@@ -11,11 +11,9 @@ import (
 	"strings"
 	"time"
 
-	geppettolayers "github.com/go-go-golems/geppetto/pkg/layers"
-	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/glazed/pkg/cmds"
-	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/go-go-golems/jesus/pkg/api"
 	"github.com/go-go-golems/jesus/pkg/engine"
 	"github.com/go-go-golems/jesus/pkg/web"
@@ -30,108 +28,83 @@ type ServeCmd struct {
 
 // ServeSettings holds the configuration for the serve command
 type ServeSettings struct {
-	Port       string `glazed.parameter:"port"`
-	AdminPort  string `glazed.parameter:"admin-port"`
-	AppDB      string `glazed.parameter:"app-db"`
-	SystemDB   string `glazed.parameter:"system-db"`
-	ScriptsDir string `glazed.parameter:"scripts"`
+	Port       string `glazed:"port"`
+	AdminPort  string `glazed:"admin-port"`
+	AppDB      string `glazed:"app-db"`
+	SystemDB   string `glazed:"system-db"`
+	ScriptsDir string `glazed:"scripts"`
 }
 
 // Ensure ServeCmd implements BareCommand
 var _ cmds.BareCommand = &ServeCmd{}
 
-// NewServeCmd creates a new serve command with Geppetto layers
+// NewServeCmd creates a new serve command.
 func NewServeCmd() (*ServeCmd, error) {
-	// Create temporary step settings for Geppetto layers
-	tempSettings, err := settings.NewStepSettings()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create temporary step settings")
-	}
-
-	// Create Geppetto layers using geppetto helper
-	geppettoLayers, err := geppettolayers.CreateGeppettoLayers(
-		geppettolayers.WithDefaultsFromStepSettings(tempSettings),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create Geppetto layers")
-	}
-
 	return &ServeCmd{
 		CommandDescription: cmds.NewCommandDescription(
 			"serve",
-			cmds.WithShort("Start the JavaScript playground server with Geppetto AI capabilities"),
+			cmds.WithShort("Start the JavaScript playground server"),
 			cmds.WithLong(`
-Start the JavaScript playground server with integrated Geppetto AI capabilities.
+Start the JavaScript playground server.
 
 The server provides:
-- JavaScript runtime with Geppetto APIs (Conversation, ChatStepFactory)
 - SQLite integration for application and system data
 - Admin interface for monitoring and management
 - Script loading from directory on startup
 - RESTful API for JavaScript execution
 
 Examples:
-  serve --port 8080 --scripts ./scripts
+  serve --port 9922 --scripts ./scripts
   serve --app-db app.db --system-db system.db --admin-port 9090
 			`),
 			cmds.WithFlags(
-				parameters.NewParameterDefinition(
+				fields.New(
 					"port",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("HTTP port for JavaScript web server"),
-					parameters.WithDefault("8080"),
-					parameters.WithShortFlag("p"),
+					fields.TypeString,
+					fields.WithHelp("HTTP port for JavaScript web server"),
+					fields.WithDefault("9922"),
+					fields.WithShortFlag("p"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"admin-port",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("HTTP port for admin/system interface"),
-					parameters.WithDefault("9090"),
+					fields.TypeString,
+					fields.WithHelp("HTTP port for admin/system interface"),
+					fields.WithDefault("9090"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"app-db",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("SQLite database path for application data (accessible via db.* in JavaScript)"),
-					parameters.WithDefault("data.sqlite"),
-					parameters.WithShortFlag("d"),
+					fields.TypeString,
+					fields.WithHelp("SQLite database path for application data (accessible via db.* in JavaScript)"),
+					fields.WithDefault("data.sqlite"),
+					fields.WithShortFlag("d"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"system-db",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("SQLite database path for system operations (execution logs, request logs)"),
-					parameters.WithDefault("system.sqlite"),
+					fields.TypeString,
+					fields.WithHelp("SQLite database path for system operations (execution logs, request logs)"),
+					fields.WithDefault("system.sqlite"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"scripts",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("Directory containing JavaScript files to load on startup"),
-					parameters.WithDefault(""),
-					parameters.WithShortFlag("s"),
+					fields.TypeString,
+					fields.WithHelp("Directory containing JavaScript files to load on startup"),
+					fields.WithDefault(""),
+					fields.WithShortFlag("s"),
 				),
 			),
-			// Add Geppetto layers for AI configuration
-			cmds.WithLayersList(geppettoLayers...),
 		),
 	}, nil
 }
 
 // Run implements the BareCommand interface
-func (c *ServeCmd) Run(ctx context.Context, parsedLayers *layers.ParsedLayers) error {
+func (c *ServeCmd) Run(ctx context.Context, parsedValues *values.Values) error {
 	log.Info().Msg("Starting JavaScript playground server")
 
-	// Parse settings from layers
+	// Parse settings from the default section.
 	s := &ServeSettings{}
-	if err := parsedLayers.InitializeStruct(layers.DefaultSlug, s); err != nil {
+	if err := parsedValues.DecodeSectionInto(values.DefaultSlug, s); err != nil {
 		return errors.Wrap(err, "failed to parse serve settings")
 	}
-
-	// Create StepSettings from parsed Geppetto layers for AI integration
-	stepSettings, err := settings.NewStepSettingsFromParsedLayers(parsedLayers)
-	if err != nil {
-		return errors.Wrap(err, "failed to create step settings from parsed layers")
-	}
-
-	log.Debug().Interface("settings", stepSettings).Msg("Loaded AI step settings for JavaScript engine")
 
 	// Find free ports
 	requestedPort, err := strconv.Atoi(s.Port)
@@ -168,13 +141,10 @@ func (c *ServeCmd) Run(ctx context.Context, parsedLayers *layers.ParsedLayers) e
 	}
 	log.Debug().Msg("Scripts directory ready")
 
-	// Initialize JavaScript engine with enhanced Geppetto integration
+	// Initialize the JavaScript engine.
 	log.Debug().Str("appDatabase", s.AppDB).Str("systemDatabase", s.SystemDB).Msg("Initializing JavaScript engine")
 	jsEngine := engine.NewEngine(s.AppDB, s.SystemDB)
 
-	// Enhanced: Pass stepSettings to engine for better AI integration
-	// This would require updating the engine to accept stepSettings
-	// For now, we'll keep the existing bootstrap initialization
 	if err := jsEngine.Init("bootstrap.js"); err != nil {
 		log.Warn().Err(err).Msg("Failed to load bootstrap.js")
 	}

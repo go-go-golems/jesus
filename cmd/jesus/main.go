@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	clay "github.com/go-go-golems/clay/pkg"
 	clay_profiles "github.com/go-go-golems/clay/pkg/cmds/profiles"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds/logging"
 	"github.com/go-go-golems/glazed/pkg/help"
-	helpCmd "github.com/go-go-golems/glazed/pkg/help/cmd"
+	help_cmd "github.com/go-go-golems/glazed/pkg/help/cmd"
 	"github.com/go-go-golems/jesus/cmd/jesus/cmd"
 	"github.com/go-go-golems/jesus/pkg/mcp"
 	"github.com/spf13/cobra"
@@ -25,16 +24,16 @@ func main() {
 		Short: "JavaScript playground web server with Geppetto AI integration",
 		Long:  "A JavaScript playground web server with SQLite integration and Geppetto AI capabilities",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return logging.InitLoggerFromViper()
+			return logging.InitLoggerFromCobra(cmd)
 		},
 	}
 
 	// Set up help system for the root command
-	helpCmd.SetupCobraRootCommand(helpSystem, rootCmd)
+	help_cmd.SetupCobraRootCommand(helpSystem, rootCmd)
 
-	// Initialize Viper for configuration management
-	if err := clay.InitViper("js-web-server", rootCmd); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize viper: %v\n", err)
+	// Initialize Glazed logging section without Viper.
+	if err := logging.AddLoggingSectionToRootCommand(rootCmd, "jesus"); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to add logging section: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -47,10 +46,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Build Cobra command with custom js-web-server middlewares and profile support
+	// Build Cobra command with custom jesus middlewares and profile support
 	serveCobraCmd, err := cmd.BuildCobraCommandWithServeMiddlewares(
 		serveCmd,
-		cli.WithProfileSettingsLayer(),
+		cli.WithProfileSettingsSection(),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error building serve command: %v\n", err)
@@ -92,7 +91,7 @@ func main() {
 
 	runScriptsCobraCmd, err := cmd.BuildCobraCommandWithServeMiddlewares(
 		runScriptsCmd,
-		cli.WithProfileSettingsLayer(),
+		cli.WithProfileSettingsSection(),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error building run-scripts command: %v\n", err)
@@ -116,7 +115,7 @@ func main() {
 	rootCmd.AddCommand(serveCobraCmd, executeCobraCmd, testCobraCmd, runScriptsCobraCmd, replCobraCmd)
 
 	// Add profiles command for configuration management
-	profilesCmd, err := clay_profiles.NewProfilesCommand("js-web-server", jsWebServerInitialProfilesContent)
+	profilesCmd, err := clay_profiles.NewProfilesCommand("jesus", jesusInitialProfilesContent)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing profiles command: %v\n", err)
 		os.Exit(1)
@@ -136,8 +135,8 @@ func main() {
 	}
 }
 
-// jsWebServerInitialProfilesContent provides the default YAML content for a new js-web-server profiles file.
-func jsWebServerInitialProfilesContent() string {
+// jesusInitialProfilesContent provides the default YAML content for a new jesus profiles file.
+func jesusInitialProfilesContent() string {
 	return `# JavaScript Web Server Profiles Configuration
 #
 # This file contains profile configurations for the JavaScript Web Server with Geppetto AI integration.
@@ -161,7 +160,7 @@ development:
     openai-api-key: "[REDACTED:api-key]" # Replace with your key or use environment variable
   # Server settings for development
   default:
-    port: "8080"
+    port: "9922"
     admin-port: "9090"
     app-db: "dev-data.sqlite"
     system-db: "dev-system.sqlite"
@@ -176,17 +175,17 @@ production:
     ai-temperature: 0.7
     ai-max-response-tokens: 2000
     ai-cache-type: disk
-    ai-cache-directory: "/var/cache/js-web-server"
+    ai-cache-directory: "/var/cache/jesus"
   # OpenAI configuration for production
   openai-chat:
     openai-api-key: "[REDACTED:api-key]" # Use environment variable in production
   # Server settings for production
   default:
-    port: "8080"
+    port: "9922"
     admin-port: "9090"
-    app-db: "/var/lib/js-web-server/data.sqlite"
-    system-db: "/var/lib/js-web-server/system.sqlite"
-    scripts: "/etc/js-web-server/scripts"
+    app-db: "/var/lib/jesus/data.sqlite"
+    system-db: "/var/lib/jesus/system.sqlite"
+    scripts: "/etc/jesus/scripts"
 
 # Claude-based profile
 claude-dev:
@@ -244,7 +243,7 @@ testing:
     system-db: ":memory:"
 
 #
-# You can manage this file using the 'js-web-server profiles' commands:
+# You can manage this file using the 'jesus profiles' commands:
 # - list: List all profiles
 # - get <profile> [layer] [key]: Get profile settings
 # - set <profile> <layer> <key> <value>: Set a profile setting
@@ -254,12 +253,12 @@ testing:
 # - duplicate <source> <new>: Copy an existing profile
 #
 # Examples:
-#   js-web-server --profile development serve
-#   js-web-server --profile production serve --port 80
-#   js-web-server --profile claude-dev serve
-#   js-web-server --profile local-llm serve
-#   js-web-server profiles list
-#   js-web-server profiles get development ai-chat ai-engine
-#   js-web-server profiles set testing ai-chat ai-temperature 0.1
+#   jesus --profile development serve
+#   jesus --profile production serve --port 80
+#   jesus --profile claude-dev serve
+#   jesus --profile local-llm serve
+#   jesus profiles list
+#   jesus profiles get development ai-chat ai-engine
+#   jesus profiles set testing ai-chat ai-temperature 0.1
 `
 }

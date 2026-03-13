@@ -7,140 +7,204 @@ import (
 	embeddings_config "github.com/go-go-golems/geppetto/pkg/embeddings/config"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings/claude"
+	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings/gemini"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings/openai"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
-	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/middlewares"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/schema"
+	"github.com/go-go-golems/glazed/pkg/cmds/sources"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
+	appconfig "github.com/go-go-golems/glazed/pkg/config"
 	"github.com/go-go-golems/pinocchio/pkg/cmds/cmdlayers"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
-// BuildCobraCommandWithServeMiddlewares builds a Cobra command with custom js-web-server middlewares
-// that include profile support specifically for the js-web-server application.
+const (
+	jesusAppName     = "jesus"
+	jesusEnvPrefix   = "JESUS"
+	pinocchioAppName = "pinocchio"
+)
+
+// BuildCobraCommandWithServeMiddlewares builds a Cobra command with custom jesus middlewares
+// that include profile support specifically for the jesus application.
 func BuildCobraCommandWithServeMiddlewares(
 	cmd cmds.Command,
 	options ...cli.CobraOption,
 ) (*cobra.Command, error) {
 	options_ := append([]cli.CobraOption{
-		cli.WithCobraMiddlewaresFunc(GetServeCommandMiddlewares),
-		cli.WithCobraShortHelpLayers(layers.DefaultSlug, cmdlayers.GeppettoHelpersSlug),
+		cli.WithParserConfig(cli.CobraParserConfig{
+			AppName:         jesusAppName,
+			MiddlewaresFunc: GetServeCommandMiddlewares,
+		}),
+		cli.WithCobraShortHelpSections(schema.DefaultSlug, cmdlayers.GeppettoHelpersSlug),
 	}, options...)
 
 	return cli.BuildCobraCommandFromCommand(cmd, options_...)
 }
 
-// GetServeCommandMiddlewares provides the middleware chain for js-web-server commands
-// with proper profile support, configuration loading, and parameter precedence.
+// GetServeCommandMiddlewares provides the source chain for jesus commands
+// with proper profile support, configuration loading, and field precedence.
 func GetServeCommandMiddlewares(
-	parsedCommandLayers *layers.ParsedLayers,
+	parsedCommandSections *values.Values,
 	cmd *cobra.Command,
 	args []string,
-) ([]middlewares.Middleware, error) {
+) ([]sources.Middleware, error) {
 	commandSettings := &cli.CommandSettings{}
-	err := parsedCommandLayers.InitializeStruct(cli.CommandSettingsSlug, commandSettings)
-	if err != nil {
+	if err := parsedCommandSections.DecodeSectionInto(cli.CommandSettingsSlug, commandSettings); err != nil {
 		return nil, err
 	}
 
 	profileSettings := &cli.ProfileSettings{}
-	err = parsedCommandLayers.InitializeStruct(cli.ProfileSettingsSlug, profileSettings)
+	if err := parsedCommandSections.DecodeSectionInto(cli.ProfileSettingsSlug, profileSettings); err != nil {
+		return nil, err
+	}
+
+	jesusConfigFiles, err := resolveConfigFiles(jesusAppName, commandSettings.ConfigFile)
 	if err != nil {
 		return nil, err
 	}
 
-	middlewares_ := []middlewares.Middleware{
-		middlewares.ParseFromCobraCommand(cmd,
-			parameters.WithParseStepSource("cobra"),
+	pinocchioConfigFiles, err := resolveConfigFiles(pinocchioAppName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	middlewares_ := []sources.Middleware{
+		sources.FromCobra(cmd,
+			fields.WithSource("cobra"),
 		),
-		middlewares.GatherArguments(args,
-			parameters.WithParseStepSource("arguments"),
+		sources.FromArgs(args,
+			fields.WithSource("arguments"),
+		),
+		sources.FromEnv(jesusEnvPrefix,
+			fields.WithSource("env"),
 		),
 	}
 
-	if commandSettings.LoadParametersFromFile != "" {
-		middlewares_ = append(middlewares_,
-			middlewares.LoadParametersFromFile(commandSettings.LoadParametersFromFile))
-	}
-
-	// Profile support with layered configuration: pinocchio first, then js-web-server overrides
+	// Profile support with layered configuration: pinocchio first, then jesus overrides
 	xdgConfigPath, err := os.UserConfigDir()
 	if err != nil {
 		log.Warn().Err(err).Msg("Could not get user config directory, using current directory")
 		xdgConfigPath = "."
 	}
 
-	// Set up profile files: pinocchio as base, js-web-server as override
+	// Set up profile files: pinocchio as base, jesus as override
 	pinocchioProfileFile := fmt.Sprintf("%s/pinocchio/profiles.yaml", xdgConfigPath)
-	jsWebServerProfileFile := fmt.Sprintf("%s/js-web-server/profiles.yaml", xdgConfigPath)
+	jesusProfileFile := fmt.Sprintf("%s/jesus/profiles.yaml", xdgConfigPath)
 
-	// Use specified profile file or default to js-web-server
+	// Use specified profile file or default to jesus
 	targetProfileFile := profileSettings.ProfileFile
 	if targetProfileFile == "" {
-		targetProfileFile = jsWebServerProfileFile
+		targetProfileFile = jesusProfileFile
 	}
 
-	// Default to development profile for js-web-server
+	// Default to development profile for jesus
 	profile := profileSettings.Profile
 	if profile == "" {
 		profile = "default"
 	}
 
 	middlewares_ = append(middlewares_,
-		middlewares.GatherFlagsFromCustomProfiles(
+		sources.GatherFlagsFromCustomProfiles(
 			profile,
-			middlewares.WithProfileFile(targetProfileFile),
-			middlewares.WithProfileRequired(false), // Don't fail if profile doesn't exist
-			middlewares.WithProfileParseOptions(
-				parameters.WithParseStepSource("js-web-server-profiles"),
-				parameters.WithParseStepMetadata(map[string]interface{}{
+			sources.WithProfileFile(targetProfileFile),
+			sources.WithProfileRequired(false), // Don't fail if profile doesn't exist
+			sources.WithProfileParseOptions(
+				fields.WithSource("jesus-profiles"),
+				fields.WithMetadata(map[string]interface{}{
 					"profileFile": targetProfileFile,
 					"profile":     profile,
-					"layer":       "override",
+					"section":     "override",
 				}),
 			),
 		),
 		// Pinocchio profiles as base configuration
-		middlewares.GatherFlagsFromProfiles(
+		sources.GatherFlagsFromProfiles(
 			pinocchioProfileFile,
 			pinocchioProfileFile,
 			profile,
-			parameters.WithParseStepSource("pinocchio-profiles"),
-			parameters.WithParseStepMetadata(map[string]interface{}{
+			"default",
+			fields.WithSource("pinocchio-profiles"),
+			fields.WithMetadata(map[string]interface{}{
 				"profileFile": pinocchioProfileFile,
 				"profile":     profile,
-				"layer":       "base",
+				"section":     "base",
 			}),
 		),
+	)
 
-		middlewares.WrapWithWhitelistedLayers(
+	aiSectionMiddlewares := []sources.Middleware{}
+	if len(pinocchioConfigFiles) > 0 {
+		aiSectionMiddlewares = append(aiSectionMiddlewares,
+			sources.FromFiles(pinocchioConfigFiles,
+				sources.WithParseOptions(fields.WithSource("pinocchio-config"))),
+		)
+	}
+	if len(jesusConfigFiles) > 0 {
+		aiSectionMiddlewares = append(aiSectionMiddlewares,
+			sources.FromFiles(jesusConfigFiles,
+				sources.WithParseOptions(fields.WithSource("jesus-config"))),
+		)
+	}
+	aiSectionMiddlewares = append(aiSectionMiddlewares,
+		sources.FromDefaults(fields.WithSource(fields.SourceDefaults)),
+	)
+
+	middlewares_ = append(middlewares_,
+		sources.WrapWithWhitelistedSections(
 			[]string{
 				settings.AiChatSlug,
 				settings.AiClientSlug,
+				settings.AiInferenceSlug,
 				openai.OpenAiChatSlug,
 				claude.ClaudeChatSlug,
+				gemini.GeminiChatSlug,
 				cmdlayers.GeppettoHelpersSlug,
 				embeddings_config.EmbeddingsSlug,
 				cli.ProfileSettingsSlug,
 			},
-			middlewares.GatherFlagsFromCustomViper(
-				middlewares.WithAppName("pinocchio"),
-				middlewares.WithParseOptions(parameters.WithParseStepSource("pinocchio-viper")),
-			),
-			middlewares.GatherFlagsFromViper(parameters.WithParseStepSource("js-web-server-viper")),
-			middlewares.SetFromDefaults(parameters.WithParseStepSource("defaults")),
+			aiSectionMiddlewares...,
 		),
-		// JS web server viper config
-		middlewares.WrapWithWhitelistedLayers(
+	)
+
+	defaultSectionMiddlewares := []sources.Middleware{}
+	if len(jesusConfigFiles) > 0 {
+		defaultSectionMiddlewares = append(defaultSectionMiddlewares,
+			sources.FromFiles(jesusConfigFiles,
+				sources.WithParseOptions(fields.WithSource("jesus-config"))),
+		)
+	}
+	defaultSectionMiddlewares = append(defaultSectionMiddlewares,
+		sources.FromDefaults(fields.WithSource(fields.SourceDefaults)),
+	)
+
+	middlewares_ = append(middlewares_,
+		sources.WrapWithWhitelistedSections(
 			[]string{
-				layers.DefaultSlug, // Include the default layer for js-web-server settings
+				schema.DefaultSlug, // Include the default section for jesus settings
 			},
-			middlewares.GatherFlagsFromViper(parameters.WithParseStepSource("js-web-server-viper")),
-			middlewares.SetFromDefaults(parameters.WithParseStepSource("defaults")),
+			defaultSectionMiddlewares...,
 		),
 	)
 
 	return middlewares_, nil
+}
+
+func resolveConfigFiles(appName string, explicit string) ([]string, error) {
+	if appName == "" && explicit == "" {
+		return nil, nil
+	}
+
+	path, err := appconfig.ResolveAppConfigPath(appName, explicit)
+	if err != nil {
+		return nil, err
+	}
+
+	if path == "" {
+		return nil, nil
+	}
+
+	return []string{path}, nil
 }

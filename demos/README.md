@@ -59,7 +59,7 @@ This directory contains VHS demo tapes showcasing the JavaScript REPL functional
 ## Requirements
 
 - [VHS](https://github.com/charmbracelet/vhs) installed
-- Go runtime for building the js-web-server
+- Go runtime for building the jesus server
 - Terminal with good color support
 
 ## Generating All Demos

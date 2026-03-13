@@ -13,15 +13,15 @@ if ! command -v vhs &> /dev/null; then
     exit 1
 fi
 
-# Build the js-web-server first
-echo "🔨 Building js-web-server..."
+# Build the jesus server first
+echo "🔨 Building jesus..."
 cd .. && go build . && cd demos
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to build js-web-server"
+    echo "❌ Failed to build jesus"
     exit 1
 fi
 
-echo "✅ js-web-server built successfully"
+echo "✅ jesus built successfully"
 echo
 
 # Generate each demo

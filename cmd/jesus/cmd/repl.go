@@ -6,8 +6,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/go-go-golems/glazed/pkg/cmds"
-	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/schema"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/go-go-golems/jesus/pkg/repl"
 	"github.com/pkg/errors"
 )
@@ -19,7 +20,7 @@ type ReplCmd struct {
 
 // ReplSettings holds the configuration for the REPL command
 type ReplSettings struct {
-	Multiline bool `glazed.parameter:"multiline"`
+	Multiline bool `glazed:"multiline"`
 }
 
 // Ensure ReplCmd implements BareCommand
@@ -38,13 +39,13 @@ The REPL provides:
 - Multiline input support (Ctrl+J for additional lines)
 - Command history
 - Built-in commands (type /help for list)
-- Integration with existing js-web-server configurations`),
+- Integration with existing jesus configurations`),
 			cmds.WithFlags(
-				parameters.NewParameterDefinition(
+				fields.New(
 					"multiline",
-					parameters.ParameterTypeBool,
-					parameters.WithHelp("Start in multiline mode"),
-					parameters.WithDefault(false),
+					fields.TypeBool,
+					fields.WithHelp("Start in multiline mode"),
+					fields.WithDefault(false),
 				),
 			),
 		),
@@ -52,10 +53,10 @@ The REPL provides:
 }
 
 // Run implements the BareCommand interface
-func (c *ReplCmd) Run(ctx context.Context, parsedLayers *layers.ParsedLayers) error {
-	// Parse settings from layers
+func (c *ReplCmd) Run(ctx context.Context, parsedValues *values.Values) error {
+	// Parse settings from the default section.
 	s := &ReplSettings{}
-	if err := parsedLayers.InitializeStruct(layers.DefaultSlug, s); err != nil {
+	if err := parsedValues.DecodeSectionInto(schema.DefaultSlug, s); err != nil {
 		return errors.Wrap(err, "failed to parse REPL settings")
 	}
 

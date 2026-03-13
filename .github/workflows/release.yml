@@ -1,10 +1,9 @@
-on:
-  workflow_dispatch:
-
-  push:
-    # run only against tags
-    tags:
-      - '*'
+name: release  # Adding name for clarity
+on: 
+  workflow_dispatch:  # Allow manual triggers only
+#  push:
+#    tags:
+#      - '*'
 
 permissions:
   contents: write
@@ -15,17 +14,20 @@ permissions:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
-    environment: release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - run: git fetch --force --tags
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: '>=1.19.5'
+          go-version: '>=1.21.5'
           cache: true
-
+      - name: OSXCross for CGO Support
+        run: |
+          mkdir -p /home/runner/work/osxcross
+          git clone https://github.com/plentico/osxcross-target.git /home/runner/work/osxcross/target
+          echo "ENABLE_OSXCROSS=1" >> $GITHUB_ENV
       - name: Import GPG key
         id: import_gpg
         uses: crazy-max/ghaction-import-gpg@v6
@@ -34,7 +36,7 @@ jobs:
           passphrase: ${{ secrets.GO_GO_GOLEMS_SIGN_PASSPHRASE }}
           fingerprint: "6EBE1DF0BDF48A1BBA381B5B79983EF218C6ED7E"
 
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: latest

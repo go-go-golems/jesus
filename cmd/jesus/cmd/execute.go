@@ -9,8 +9,9 @@ import (
 	"strings"
 
 	"github.com/go-go-golems/glazed/pkg/cmds"
-	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/schema"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -22,8 +23,8 @@ type ExecuteCmd struct {
 
 // ExecuteSettings holds the configuration for the execute command
 type ExecuteSettings struct {
-	URL   string `glazed.parameter:"url"`
-	Input string `glazed.parameter:"input"`
+	URL   string `glazed:"url"`
+	Input string `glazed:"input"`
 }
 
 // Ensure ExecuteCmd implements BareCommand
@@ -36,14 +37,13 @@ func NewExecuteCmd() (*ExecuteCmd, error) {
 			"execute",
 			cmds.WithShort("Execute JavaScript code on the server"),
 			cmds.WithLong(`
-Execute JavaScript code on a running js-web-server instance.
+Execute JavaScript code on a running jesus instance.
 
 The input can be either:
 - Direct JavaScript code string
 - Path to a JavaScript file
 
 The code will be executed in the server's JavaScript runtime with access to:
-- Geppetto APIs (Conversation, ChatStepFactory)
 - Database bindings (db.query, db.exec)
 - HTTP route registration (app.get, app.post, etc.)
 - Console logging and global state
@@ -51,23 +51,23 @@ The code will be executed in the server's JavaScript runtime with access to:
 Examples:
   execute "console.log('Hello World')"
   execute ./scripts/test.js
-  execute --url http://localhost:8081 "globalState.counter++"
+  execute --url http://localhost:9090 "globalState.counter++"
 			`),
 			cmds.WithFlags(
-				parameters.NewParameterDefinition(
+				fields.New(
 					"url",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("Server URL"),
-					parameters.WithDefault("http://localhost:8080"),
-					parameters.WithShortFlag("u"),
+					fields.TypeString,
+					fields.WithHelp("Server URL"),
+					fields.WithDefault("http://localhost:9090"),
+					fields.WithShortFlag("u"),
 				),
 			),
 			cmds.WithArguments(
-				parameters.NewParameterDefinition(
+				fields.New(
 					"input",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("JavaScript code to execute or path to JavaScript file"),
-					parameters.WithRequired(true),
+					fields.TypeString,
+					fields.WithHelp("JavaScript code to execute or path to JavaScript file"),
+					fields.WithRequired(true),
 				),
 			),
 		),
@@ -75,10 +75,10 @@ Examples:
 }
 
 // Run implements the BareCommand interface
-func (c *ExecuteCmd) Run(ctx context.Context, parsedLayers *layers.ParsedLayers) error {
-	// Parse settings from layers
+func (c *ExecuteCmd) Run(ctx context.Context, parsedValues *values.Values) error {
+	// Parse settings from the default section.
 	s := &ExecuteSettings{}
-	if err := parsedLayers.InitializeStruct(layers.DefaultSlug, s); err != nil {
+	if err := parsedValues.DecodeSectionInto(schema.DefaultSlug, s); err != nil {
 		return errors.Wrap(err, "failed to parse execute settings")
 	}
 

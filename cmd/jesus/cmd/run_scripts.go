@@ -5,13 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	geppettolayers "github.com/go-go-golems/geppetto/pkg/layers"
-	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/glazed/pkg/cmds"
-	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/schema"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/go-go-golems/jesus/pkg/engine"
-	pinocchio_cmdlayers "github.com/go-go-golems/pinocchio/pkg/cmds/cmdlayers"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -23,8 +21,8 @@ type RunScriptsCmd struct {
 
 // RunScriptsSettings holds the configuration for the run-scripts command
 type RunScriptsSettings struct {
-	ScriptsDir string   `glazed.parameter:"scripts"`
-	Files      []string `glazed.parameter:"files"`
+	ScriptsDir string   `glazed:"scripts"`
+	Files      []string `glazed:"files"`
 }
 
 // Ensure RunScriptsCmd implements BareCommand
@@ -32,96 +30,48 @@ var _ cmds.BareCommand = &RunScriptsCmd{}
 
 // NewRunScriptsCmd creates a new run-scripts command
 func NewRunScriptsCmd() (*RunScriptsCmd, error) {
-	// Create temporary step settings for Geppetto layers
-	tempSettings, err := settings.NewStepSettings()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create step settings")
-	}
-
-	// Create Geppetto layers (with defaults from temporary step settings)
-	geppettoLayers, err := geppettolayers.CreateGeppettoLayers(
-		geppettolayers.WithDefaultsFromStepSettings(tempSettings),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create Geppetto layers")
-	}
-
-	// Add Geppetto helpers layer
-	helpersLayer, err := pinocchio_cmdlayers.NewHelpersParameterLayer()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create helpers layer")
-	}
-
-	// Create default layer for run-scripts specific settings
-	defaultLayer, err := layers.NewParameterLayer(
-		layers.DefaultSlug,
-		"Run Scripts Configuration",
-		layers.WithParameterDefinitions(
-			parameters.NewParameterDefinition(
-				"scripts",
-				parameters.ParameterTypeString,
-				parameters.WithHelp("Directory containing JavaScript files to execute"),
-				parameters.WithShortFlag("s"),
-				parameters.WithDefault("./scripts"),
-			),
-			parameters.NewParameterDefinition(
-				"files",
-				parameters.ParameterTypeStringList,
-				parameters.WithHelp("Specific JavaScript files to execute (if not provided, all .js files in scripts directory)"),
-				parameters.WithShortFlag("f"),
-			),
-		),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create default layer")
-	}
-
-	// Combine all layers
-	allLayers := append(append(geppettoLayers, helpersLayer), defaultLayer)
-
 	return &RunScriptsCmd{
 		CommandDescription: cmds.NewCommandDescription(
 			"run-scripts",
-			cmds.WithShort("Execute JavaScript files with Geppetto AI capabilities"),
-			cmds.WithLong(`Execute JavaScript files with Geppetto AI capabilities without starting the web server.
-
-This command loads and executes JavaScript files in a Geppetto-enabled environment, 
-providing access to Conversation and ChatStepFactory APIs for AI interactions.
+			cmds.WithShort("Execute JavaScript files without starting the web server"),
+			cmds.WithLong(`Execute JavaScript files without starting the web server.
 
 The command is useful for:
 • Running test scripts
-• Executing batch AI operations  
-• Testing Geppetto API functionality
-• Running standalone JavaScript with AI capabilities
+• Executing batch operations
+• Testing route registration and runtime state
+• Running standalone JavaScript with database bindings
 
 Examples:
   run-scripts --scripts ./tests
   run-scripts --files test1.js,test2.js
-  run-scripts --profile 4o-mini --scripts ./ai-tests
-  run-scripts --profile claude-dev --files inference_test.js`),
-			cmds.WithLayers(layers.NewParameterLayers(layers.WithLayers(allLayers...))),
+  run-scripts --scripts ./jobs
+  run-scripts --files seed.js,migrate.js`),
+			cmds.WithFlags(
+				fields.New(
+					"scripts",
+					fields.TypeString,
+					fields.WithHelp("Directory containing JavaScript files to execute"),
+					fields.WithShortFlag("s"),
+					fields.WithDefault("./scripts"),
+				),
+				fields.New(
+					"files",
+					fields.TypeStringList,
+					fields.WithHelp("Specific JavaScript files to execute (if not provided, all .js files in scripts directory)"),
+					fields.WithShortFlag("f"),
+				),
+			),
 		),
 	}, nil
 }
 
 // Run executes the run-scripts command
-func (cmd *RunScriptsCmd) Run(ctx context.Context, parsedLayers *layers.ParsedLayers) error {
+func (cmd *RunScriptsCmd) Run(ctx context.Context, parsedValues *values.Values) error {
 	// Parse settings
 	var runSettings RunScriptsSettings
-	err := parsedLayers.InitializeStruct(layers.DefaultSlug, &runSettings)
-	if err != nil {
+	if err := parsedValues.DecodeSectionInto(schema.DefaultSlug, &runSettings); err != nil {
 		return errors.Wrap(err, "failed to parse settings")
-	}
-
-	// Create step settings from parsed layers
-	stepSettings, err := settings.NewStepSettings()
-	if err != nil {
-		return errors.Wrap(err, "failed to create step settings")
-	}
-
-	err = stepSettings.UpdateFromParsedLayers(parsedLayers)
-	if err != nil {
-		return errors.Wrap(err, "failed to update step settings from parsed layers")
 	}
 
 	log.Info().Str("scripts_dir", runSettings.ScriptsDir).Msg("Starting JavaScript script execution")
@@ -129,12 +79,6 @@ func (cmd *RunScriptsCmd) Run(ctx context.Context, parsedLayers *layers.ParsedLa
 	// Initialize JavaScript engine with in-memory databases (since we don't need persistence for script execution)
 	jsEngine := engine.NewEngine(":memory:", ":memory:")
 	defer func() { _ = jsEngine.Close() }()
-
-	// Update engine with our step settings for AI capabilities
-	err = jsEngine.UpdateStepSettings(stepSettings)
-	if err != nil {
-		return errors.Wrap(err, "failed to update step settings")
-	}
 
 	// Determine which files to execute
 	var filesToExecute []string
