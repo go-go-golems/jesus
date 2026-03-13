@@ -31,9 +31,9 @@ func main() {
 	// Set up help system for the root command
 	help_cmd.SetupCobraRootCommand(helpSystem, rootCmd)
 
-	// Initialize Glazed logging layer without Viper
-	if err := logging.AddLoggingLayerToRootCommand(rootCmd, "jesus"); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to add logging layer: %v\n", err)
+	// Initialize Glazed logging section without Viper.
+	if err := logging.AddLoggingSectionToRootCommand(rootCmd, "jesus"); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to add logging section: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -49,7 +49,7 @@ func main() {
 	// Build Cobra command with custom jesus middlewares and profile support
 	serveCobraCmd, err := cmd.BuildCobraCommandWithServeMiddlewares(
 		serveCmd,
-		cli.WithProfileSettingsLayer(),
+		cli.WithProfileSettingsSection(),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error building serve command: %v\n", err)
@@ -91,7 +91,7 @@ func main() {
 
 	runScriptsCobraCmd, err := cmd.BuildCobraCommandWithServeMiddlewares(
 		runScriptsCmd,
-		cli.WithProfileSettingsLayer(),
+		cli.WithProfileSettingsSection(),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error building run-scripts command: %v\n", err)

@@ -8,8 +8,9 @@ import (
 	"strings"
 
 	"github.com/go-go-golems/glazed/pkg/cmds"
-	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/schema"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -21,8 +22,8 @@ type TestCmd struct {
 
 // TestSettings holds the configuration for the test command
 type TestSettings struct {
-	URL      string `glazed.parameter:"url"`
-	AdminURL string `glazed.parameter:"admin-url"`
+	URL      string `glazed:"url"`
+	AdminURL string `glazed:"admin-url"`
 }
 
 // Ensure TestCmd implements BareCommand
@@ -56,19 +57,19 @@ Examples:
   test --url http://localhost:8081
 			`),
 			cmds.WithFlags(
-				parameters.NewParameterDefinition(
+				fields.New(
 					"url",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("Main server URL to test"),
-					parameters.WithDefault("http://localhost:8080"),
-					parameters.WithShortFlag("u"),
+					fields.TypeString,
+					fields.WithHelp("Main server URL to test"),
+					fields.WithDefault("http://localhost:8080"),
+					fields.WithShortFlag("u"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"admin-url",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("Admin server URL for execute endpoint testing"),
-					parameters.WithDefault("http://localhost:9090"),
-					parameters.WithShortFlag("a"),
+					fields.TypeString,
+					fields.WithHelp("Admin server URL for execute endpoint testing"),
+					fields.WithDefault("http://localhost:9090"),
+					fields.WithShortFlag("a"),
 				),
 			),
 		),
@@ -76,10 +77,10 @@ Examples:
 }
 
 // Run implements the BareCommand interface
-func (c *TestCmd) Run(ctx context.Context, parsedLayers *layers.ParsedLayers) error {
-	// Parse settings from layers
+func (c *TestCmd) Run(ctx context.Context, parsedValues *values.Values) error {
+	// Parse settings from the default section.
 	s := &TestSettings{}
-	if err := parsedLayers.InitializeStruct(layers.DefaultSlug, s); err != nil {
+	if err := parsedValues.DecodeSectionInto(schema.DefaultSlug, s); err != nil {
 		return errors.Wrap(err, "failed to parse test settings")
 	}
 

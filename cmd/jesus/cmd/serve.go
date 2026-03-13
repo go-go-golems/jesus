@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	geppettolayers "github.com/go-go-golems/geppetto/pkg/layers"
+	geppettosections "github.com/go-go-golems/geppetto/pkg/sections"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/glazed/pkg/cmds"
-	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/go-go-golems/jesus/pkg/api"
 	"github.com/go-go-golems/jesus/pkg/engine"
 	"github.com/go-go-golems/jesus/pkg/web"
@@ -30,11 +30,11 @@ type ServeCmd struct {
 
 // ServeSettings holds the configuration for the serve command
 type ServeSettings struct {
-	Port       string `glazed.parameter:"port"`
-	AdminPort  string `glazed.parameter:"admin-port"`
-	AppDB      string `glazed.parameter:"app-db"`
-	SystemDB   string `glazed.parameter:"system-db"`
-	ScriptsDir string `glazed.parameter:"scripts"`
+	Port       string `glazed:"port"`
+	AdminPort  string `glazed:"admin-port"`
+	AppDB      string `glazed:"app-db"`
+	SystemDB   string `glazed:"system-db"`
+	ScriptsDir string `glazed:"scripts"`
 }
 
 // Ensure ServeCmd implements BareCommand
@@ -48,12 +48,12 @@ func NewServeCmd() (*ServeCmd, error) {
 		return nil, errors.Wrap(err, "failed to create temporary step settings")
 	}
 
-	// Create Geppetto layers using geppetto helper
-	geppettoLayers, err := geppettolayers.CreateGeppettoLayers(
-		geppettolayers.WithDefaultsFromStepSettings(tempSettings),
+	// Create Geppetto sections using the façade packages.
+	geppettoSections, err := geppettosections.CreateGeppettoSections(
+		geppettosections.WithDefaultsFromStepSettings(tempSettings),
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create Geppetto layers")
+		return nil, errors.Wrap(err, "failed to create Geppetto sections")
 	}
 
 	return &ServeCmd{
@@ -75,60 +75,60 @@ Examples:
   serve --app-db app.db --system-db system.db --admin-port 9090
 			`),
 			cmds.WithFlags(
-				parameters.NewParameterDefinition(
+				fields.New(
 					"port",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("HTTP port for JavaScript web server"),
-					parameters.WithDefault("9922"),
-					parameters.WithShortFlag("p"),
+					fields.TypeString,
+					fields.WithHelp("HTTP port for JavaScript web server"),
+					fields.WithDefault("9922"),
+					fields.WithShortFlag("p"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"admin-port",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("HTTP port for admin/system interface"),
-					parameters.WithDefault("9090"),
+					fields.TypeString,
+					fields.WithHelp("HTTP port for admin/system interface"),
+					fields.WithDefault("9090"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"app-db",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("SQLite database path for application data (accessible via db.* in JavaScript)"),
-					parameters.WithDefault("data.sqlite"),
-					parameters.WithShortFlag("d"),
+					fields.TypeString,
+					fields.WithHelp("SQLite database path for application data (accessible via db.* in JavaScript)"),
+					fields.WithDefault("data.sqlite"),
+					fields.WithShortFlag("d"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"system-db",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("SQLite database path for system operations (execution logs, request logs)"),
-					parameters.WithDefault("system.sqlite"),
+					fields.TypeString,
+					fields.WithHelp("SQLite database path for system operations (execution logs, request logs)"),
+					fields.WithDefault("system.sqlite"),
 				),
-				parameters.NewParameterDefinition(
+				fields.New(
 					"scripts",
-					parameters.ParameterTypeString,
-					parameters.WithHelp("Directory containing JavaScript files to load on startup"),
-					parameters.WithDefault(""),
-					parameters.WithShortFlag("s"),
+					fields.TypeString,
+					fields.WithHelp("Directory containing JavaScript files to load on startup"),
+					fields.WithDefault(""),
+					fields.WithShortFlag("s"),
 				),
 			),
-			// Add Geppetto layers for AI configuration
-			cmds.WithLayersList(geppettoLayers...),
+			// Add Geppetto sections for AI configuration.
+			cmds.WithSections(geppettoSections...),
 		),
 	}, nil
 }
 
 // Run implements the BareCommand interface
-func (c *ServeCmd) Run(ctx context.Context, parsedLayers *layers.ParsedLayers) error {
+func (c *ServeCmd) Run(ctx context.Context, parsedValues *values.Values) error {
 	log.Info().Msg("Starting JavaScript playground server")
 
-	// Parse settings from layers
+	// Parse settings from the default section.
 	s := &ServeSettings{}
-	if err := parsedLayers.InitializeStruct(layers.DefaultSlug, s); err != nil {
+	if err := parsedValues.DecodeSectionInto(values.DefaultSlug, s); err != nil {
 		return errors.Wrap(err, "failed to parse serve settings")
 	}
 
-	// Create StepSettings from parsed Geppetto layers for AI integration
-	stepSettings, err := settings.NewStepSettingsFromParsedLayers(parsedLayers)
+	// Create StepSettings from parsed Geppetto sections for AI integration.
+	stepSettings, err := settings.NewStepSettingsFromParsedValues(parsedValues)
 	if err != nil {
-		return errors.Wrap(err, "failed to create step settings from parsed layers")
+		return errors.Wrap(err, "failed to create step settings from parsed values")
 	}
 
 	log.Debug().Interface("settings", stepSettings).Msg("Loaded AI step settings for JavaScript engine")

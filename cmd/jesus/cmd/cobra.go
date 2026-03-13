@@ -7,12 +7,14 @@ import (
 	embeddings_config "github.com/go-go-golems/geppetto/pkg/embeddings/config"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings/claude"
+	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings/gemini"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings/openai"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
-	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/middlewares"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/schema"
+	"github.com/go-go-golems/glazed/pkg/cmds/sources"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	appconfig "github.com/go-go-golems/glazed/pkg/config"
 	"github.com/go-go-golems/pinocchio/pkg/cmds/cmdlayers"
 	"github.com/rs/zerolog/log"
@@ -36,28 +38,26 @@ func BuildCobraCommandWithServeMiddlewares(
 			AppName:         jesusAppName,
 			MiddlewaresFunc: GetServeCommandMiddlewares,
 		}),
-		cli.WithCobraShortHelpLayers(layers.DefaultSlug, cmdlayers.GeppettoHelpersSlug),
+		cli.WithCobraShortHelpSections(schema.DefaultSlug, cmdlayers.GeppettoHelpersSlug),
 	}, options...)
 
 	return cli.BuildCobraCommandFromCommand(cmd, options_...)
 }
 
-// GetServeCommandMiddlewares provides the middleware chain for jesus commands
-// with proper profile support, configuration loading, and parameter precedence.
+// GetServeCommandMiddlewares provides the source chain for jesus commands
+// with proper profile support, configuration loading, and field precedence.
 func GetServeCommandMiddlewares(
-	parsedCommandLayers *layers.ParsedLayers,
+	parsedCommandSections *values.Values,
 	cmd *cobra.Command,
 	args []string,
-) ([]middlewares.Middleware, error) {
+) ([]sources.Middleware, error) {
 	commandSettings := &cli.CommandSettings{}
-	err := parsedCommandLayers.InitializeStruct(cli.CommandSettingsSlug, commandSettings)
-	if err != nil {
+	if err := parsedCommandSections.DecodeSectionInto(cli.CommandSettingsSlug, commandSettings); err != nil {
 		return nil, err
 	}
 
 	profileSettings := &cli.ProfileSettings{}
-	err = parsedCommandLayers.InitializeStruct(cli.ProfileSettingsSlug, profileSettings)
-	if err != nil {
+	if err := parsedCommandSections.DecodeSectionInto(cli.ProfileSettingsSlug, profileSettings); err != nil {
 		return nil, err
 	}
 
@@ -71,24 +71,16 @@ func GetServeCommandMiddlewares(
 		return nil, err
 	}
 
-	middlewares_ := []middlewares.Middleware{
-		middlewares.ParseFromCobraCommand(cmd,
-			parameters.WithParseStepSource("cobra"),
+	middlewares_ := []sources.Middleware{
+		sources.FromCobra(cmd,
+			fields.WithSource("cobra"),
 		),
-		middlewares.GatherArguments(args,
-			parameters.WithParseStepSource("arguments"),
+		sources.FromArgs(args,
+			fields.WithSource("arguments"),
 		),
-		middlewares.UpdateFromEnv(jesusEnvPrefix,
-			parameters.WithParseStepSource("env"),
+		sources.FromEnv(jesusEnvPrefix,
+			fields.WithSource("env"),
 		),
-	}
-
-	if commandSettings.LoadParametersFromFile != "" {
-		middlewares_ = append(middlewares_,
-			middlewares.LoadParametersFromFile(
-				commandSettings.LoadParametersFromFile,
-				middlewares.WithParseOptions(parameters.WithParseStepSource("command-settings-file")),
-			))
 	}
 
 	// Profile support with layered configuration: pinocchio first, then jesus overrides
@@ -115,82 +107,85 @@ func GetServeCommandMiddlewares(
 	}
 
 	middlewares_ = append(middlewares_,
-		middlewares.GatherFlagsFromCustomProfiles(
+		sources.GatherFlagsFromCustomProfiles(
 			profile,
-			middlewares.WithProfileFile(targetProfileFile),
-			middlewares.WithProfileRequired(false), // Don't fail if profile doesn't exist
-			middlewares.WithProfileParseOptions(
-				parameters.WithParseStepSource("jesus-profiles"),
-				parameters.WithParseStepMetadata(map[string]interface{}{
+			sources.WithProfileFile(targetProfileFile),
+			sources.WithProfileRequired(false), // Don't fail if profile doesn't exist
+			sources.WithProfileParseOptions(
+				fields.WithSource("jesus-profiles"),
+				fields.WithMetadata(map[string]interface{}{
 					"profileFile": targetProfileFile,
 					"profile":     profile,
-					"layer":       "override",
+					"section":     "override",
 				}),
 			),
 		),
 		// Pinocchio profiles as base configuration
-		middlewares.GatherFlagsFromProfiles(
+		sources.GatherFlagsFromProfiles(
 			pinocchioProfileFile,
 			pinocchioProfileFile,
 			profile,
-			parameters.WithParseStepSource("pinocchio-profiles"),
-			parameters.WithParseStepMetadata(map[string]interface{}{
+			"default",
+			fields.WithSource("pinocchio-profiles"),
+			fields.WithMetadata(map[string]interface{}{
 				"profileFile": pinocchioProfileFile,
 				"profile":     profile,
-				"layer":       "base",
+				"section":     "base",
 			}),
 		),
 	)
 
-	aiLayerMiddlewares := []middlewares.Middleware{}
+	aiSectionMiddlewares := []sources.Middleware{}
 	if len(pinocchioConfigFiles) > 0 {
-		aiLayerMiddlewares = append(aiLayerMiddlewares,
-			middlewares.LoadParametersFromFiles(pinocchioConfigFiles,
-				middlewares.WithParseOptions(parameters.WithParseStepSource("pinocchio-config"))),
+		aiSectionMiddlewares = append(aiSectionMiddlewares,
+			sources.FromFiles(pinocchioConfigFiles,
+				sources.WithParseOptions(fields.WithSource("pinocchio-config"))),
 		)
 	}
 	if len(jesusConfigFiles) > 0 {
-		aiLayerMiddlewares = append(aiLayerMiddlewares,
-			middlewares.LoadParametersFromFiles(jesusConfigFiles,
-				middlewares.WithParseOptions(parameters.WithParseStepSource("jesus-config"))),
+		aiSectionMiddlewares = append(aiSectionMiddlewares,
+			sources.FromFiles(jesusConfigFiles,
+				sources.WithParseOptions(fields.WithSource("jesus-config"))),
 		)
 	}
-	aiLayerMiddlewares = append(aiLayerMiddlewares,
-		middlewares.SetFromDefaults(parameters.WithParseStepSource("defaults")),
+	aiSectionMiddlewares = append(aiSectionMiddlewares,
+		sources.FromDefaults(fields.WithSource(fields.SourceDefaults)),
 	)
 
 	middlewares_ = append(middlewares_,
-		middlewares.WrapWithWhitelistedLayers(
+		sources.WrapWithWhitelistedSections(
 			[]string{
 				settings.AiChatSlug,
 				settings.AiClientSlug,
+				settings.AiInferenceSlug,
 				openai.OpenAiChatSlug,
 				claude.ClaudeChatSlug,
+				gemini.GeminiChatSlug,
 				cmdlayers.GeppettoHelpersSlug,
 				embeddings_config.EmbeddingsSlug,
 				cli.ProfileSettingsSlug,
 			},
-			aiLayerMiddlewares...,
+			aiSectionMiddlewares...,
 		),
 	)
 
-	defaultLayerMiddlewares := []middlewares.Middleware{}
+	defaultSectionMiddlewares := []sources.Middleware{}
 	if len(jesusConfigFiles) > 0 {
-		defaultLayerMiddlewares = append(defaultLayerMiddlewares,
-			middlewares.LoadParametersFromFiles(jesusConfigFiles,
-				middlewares.WithParseOptions(parameters.WithParseStepSource("jesus-config"))),
+		defaultSectionMiddlewares = append(defaultSectionMiddlewares,
+			sources.FromFiles(jesusConfigFiles,
+				sources.WithParseOptions(fields.WithSource("jesus-config"))),
 		)
 	}
-	defaultLayerMiddlewares = append(defaultLayerMiddlewares,
-		middlewares.SetFromDefaults(parameters.WithParseStepSource("defaults")),
+	defaultSectionMiddlewares = append(defaultSectionMiddlewares,
+		sources.FromDefaults(fields.WithSource(fields.SourceDefaults)),
 	)
 
 	middlewares_ = append(middlewares_,
-		middlewares.WrapWithWhitelistedLayers(
+		sources.WrapWithWhitelistedSections(
 			[]string{
-				layers.DefaultSlug, // Include the default layer for jesus settings
+				schema.DefaultSlug, // Include the default section for jesus settings
 			},
-			defaultLayerMiddlewares...,
+			defaultSectionMiddlewares...,
 		),
 	)
 

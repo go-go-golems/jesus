@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -45,8 +46,16 @@ func NewModel(startMultiline bool) Model {
 	// Create a Goja runtime with Node-style require() and native modules enabled
 	// using the go-go-goja engine helper. This ensures that users can load
 	// modules (e.g. require("database")) from within the REPL.
-	vm, _ := ggjengine.New()
-	rt := vm
+	rt := goja.New()
+	factory, err := ggjengine.NewBuilder().
+		WithModules(ggjengine.DefaultRegistryModules()).
+		Build()
+	if err == nil {
+		runtime, runtimeErr := factory.NewRuntime(context.Background())
+		if runtimeErr == nil && runtime != nil && runtime.VM != nil {
+			rt = runtime.VM
+		}
+	}
 
 	// Override console.log to write directly to stdout without timestamps to keep REPL output clean.
 	consoleObj := rt.NewObject()
