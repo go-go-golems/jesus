@@ -11,6 +11,14 @@ DocType: index
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: ../../../../../../../../../code/wesen/2026-03-14--cozodb-editor/frontend/src/notebook/NotebookCellCard.tsx
+      Note: Reference cell card component with inline output
+    - Path: ../../../../../../../../../code/wesen/2026-03-14--cozodb-editor/frontend/src/notebook/notebook.css
+      Note: Cell card
+    - Path: ../../../../../../../../../code/wesen/2026-03-14--cozodb-editor/frontend/src/theme/layout.css
+      Note: Window chrome
+    - Path: ../../../../../../../../../code/wesen/2026-03-14--cozodb-editor/frontend/src/theme/tokens.css
+      Note: System 7 design tokens — color palette
     - Path: cmd/jesus/cmd/serve.go
       Note: CLI serve command — startup and server launch
     - Path: pkg/api/execute.go
@@ -31,6 +39,7 @@ LastUpdated: 2026-03-16T08:01:50.743498275-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 # Jesus Web IDE Architecture Analysis & React Migration Plan

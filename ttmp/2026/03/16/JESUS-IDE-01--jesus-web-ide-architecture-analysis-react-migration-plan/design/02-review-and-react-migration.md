@@ -289,6 +289,10 @@ func (e *Engine) processJob(job EvalJob) {
 
 ### 3.2 Module Structure
 
+> **See also:** `design/03-notebook-ui-system7-theme.md` for the updated module
+> structure, component tree, and CSS token system based on the notebook paradigm and
+> System 7 aesthetic drawn from the CozoDB Editor reference implementation.
+
 Following the modular-themable-storybook pattern, the new frontend would live alongside
 the Go backend:
 
