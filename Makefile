@@ -62,3 +62,11 @@ jesus_BINARY=$(shell which jesus)
 install:
 	go build -o ./dist/jesus ./cmd/jesus && \
 		cp ./dist/jesus $(jesus_BINARY)
+
+.PHONY: logcopter-generate
+logcopter-generate:
+	GOWORK=off go tool logcopter-gen -include-main -var zlog -area-prefix go-go-golems.jesus -strip-prefix github.com/go-go-golems/jesus ./cmd/... ./pkg/...
+
+.PHONY: logcopter-check
+logcopter-check:
+	GOWORK=off go tool logcopter-gen -include-main -var zlog -area-prefix go-go-golems.jesus -strip-prefix github.com/go-go-golems/jesus -check ./cmd/... ./pkg/...
