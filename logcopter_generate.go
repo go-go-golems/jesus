@@ -1,0 +1,3 @@
+package jesus
+
+//go:generate go tool logcopter-gen -include-main -var zlog -area-prefix go-go-golems.jesus -strip-prefix github.com/go-go-golems/jesus ./cmd/... ./pkg/...
