@@ -1,6 +1,6 @@
 module github.com/go-go-golems/jesus
 
-go 1.26.1
+go 1.26.3
 
 require (
 	github.com/a-h/templ v0.3.898
