@@ -26,4 +26,7 @@ jobs:
         run: git diff --exit-code
       -
         name: run unit tests
+      - name: Verify Glazed CLI policy
+        run: make glazed-lint
+
         run: go test ./...
