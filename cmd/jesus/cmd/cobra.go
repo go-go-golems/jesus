@@ -202,27 +202,27 @@ func resolveConfigFiles(appName string, explicit string) ([]string, error) {
 	// by checking standard config locations (XDG config dir, home dir).
 	var paths []string
 
-	// Check explicit file first
-	if explicit != "" {
-		if _, err := os.Stat(explicit); err == nil {
-			paths = append(paths, explicit)
-		}
-	}
-
-	// Check XDG config directory
+	// Append from lowest to highest precedence. FromFiles applies later files
+	// over earlier ones, so legacy home config must come before XDG config and
+	// an explicit --config-file must come last.
 	if appName != "" {
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			homePath := filepath.Join(home, "."+appName, "config.yaml")
+			if _, err := os.Stat(homePath); err == nil {
+				paths = append(paths, homePath)
+			}
+		}
 		if xdg, err := os.UserConfigDir(); err == nil && xdg != "" {
 			xdgPath := filepath.Join(xdg, appName, "config.yaml")
 			if _, err := os.Stat(xdgPath); err == nil {
 				paths = append(paths, xdgPath)
 			}
 		}
-		// Check home directory
-		if home, err := os.UserHomeDir(); err == nil && home != "" {
-			homePath := filepath.Join(home, "."+appName, "config.yaml")
-			if _, err := os.Stat(homePath); err == nil {
-				paths = append(paths, homePath)
-			}
+	}
+
+	if explicit != "" {
+		if _, err := os.Stat(explicit); err == nil {
+			paths = append(paths, explicit)
 		}
 	}
 
