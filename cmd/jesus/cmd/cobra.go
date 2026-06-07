@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	embeddings_config "github.com/go-go-golems/geppetto/pkg/embeddings/config"
 	"github.com/go-go-golems/geppetto/pkg/steps/ai/settings"
@@ -15,7 +16,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/schema"
 	"github.com/go-go-golems/glazed/pkg/cmds/sources"
 	"github.com/go-go-golems/glazed/pkg/cmds/values"
-	appconfig "github.com/go-go-golems/glazed/pkg/config"
 	"github.com/go-go-golems/pinocchio/pkg/cmds/cmdlayers"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -197,14 +197,34 @@ func resolveConfigFiles(appName string, explicit string) ([]string, error) {
 		return nil, nil
 	}
 
-	path, err := appconfig.ResolveAppConfigPath(appName, explicit)
-	if err != nil {
-		return nil, err
+	// Resolve config files using the new plan-based config system.
+	// The old ResolveAppConfigPath is removed; we replicate its behavior
+	// by checking standard config locations (XDG config dir, home dir).
+	var paths []string
+
+	// Append from lowest to highest precedence. FromFiles applies later files
+	// over earlier ones, so legacy home config must come before XDG config and
+	// an explicit --config-file must come last.
+	if appName != "" {
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			homePath := filepath.Join(home, "."+appName, "config.yaml")
+			if _, err := os.Stat(homePath); err == nil {
+				paths = append(paths, homePath)
+			}
+		}
+		if xdg, err := os.UserConfigDir(); err == nil && xdg != "" {
+			xdgPath := filepath.Join(xdg, appName, "config.yaml")
+			if _, err := os.Stat(xdgPath); err == nil {
+				paths = append(paths, xdgPath)
+			}
+		}
 	}
 
-	if path == "" {
-		return nil, nil
+	if explicit != "" {
+		if _, err := os.Stat(explicit); err == nil {
+			paths = append(paths, explicit)
+		}
 	}
 
-	return []string{path}, nil
+	return paths, nil
 }

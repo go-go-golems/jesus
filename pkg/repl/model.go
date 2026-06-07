@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dop251/goja"
-	ggjengine "github.com/go-go-golems/go-go-goja/engine"
+	ggjengine "github.com/go-go-golems/go-go-goja/pkg/engine"
 )
 
 // Model represents the UI state for the REPL
@@ -47,11 +47,9 @@ func NewModel(startMultiline bool) Model {
 	// using the go-go-goja engine helper. This ensures that users can load
 	// modules (e.g. require("database")) from within the REPL.
 	rt := goja.New()
-	factory, err := ggjengine.NewBuilder().
-		WithModules(ggjengine.DefaultRegistryModules()).
-		Build()
+	factory, err := ggjengine.NewRuntimeFactoryBuilder().Build()
 	if err == nil {
-		runtime, runtimeErr := factory.NewRuntime(context.Background())
+		runtime, runtimeErr := factory.NewRuntime(ggjengine.WithStartupContext(context.Background()), ggjengine.WithLifetimeContext(context.Background()))
 		if runtimeErr == nil && runtime != nil && runtime.VM != nil {
 			rt = runtime.VM
 		}
